@@ -1,4 +1,5 @@
 from logging import Logger
+from typing import Optional
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
@@ -20,9 +21,9 @@ class UserService:
             self.log.warning("UserRepository: %s" % e)
         except Exception as e:
             self.log.error("UserRepository: %s" % e)
-        return 0
+        return "-1"
 
-    async def get_one(self, id: str) -> User:
+    async def get_one(self, id: str) -> Optional[User]:
         try:
             return await self.repo.get_one(id)
         except NoResultFound as e:
@@ -31,24 +32,25 @@ class UserService:
             self.log.error("UserRepository: %s" % e)
         return None
 
-    async def get_or_create(self, id: str, username: str) -> User:
+    async def get_or_create(self, id: str, username: str) -> Optional[User]:
         try:
             try:
-                user = await self.repo.get_one(id)
+                return await self.repo.get_one(id)
             except NoResultFound:
                 try:
                     id = await self.create(id, username)
                     return await self.repo.get_one(id)
                 except Exception as e:
                     self.log.error("UserRepository: %s" % e)
-            return user
+            return None
+
         except IntegrityError as e:
             self.log.warning("UserRepository: %s" % e)
         except Exception as e:
             self.log.error("UserRepository: %s" % e)
         return None
 
-    async def get_by_username(self, username: str) -> User:
+    async def get_by_username(self, username: str) -> Optional[User]:
         try:
             return await self.repo.get_by_username(username)
         except NoResultFound as e:
@@ -64,7 +66,7 @@ class UserService:
             self.log.error("UserRepository: %s" % e)
         return []
 
-    async def update_username(self, id: str, username: str) -> User:
+    async def update_username(self, id: str, username: str) -> Optional[User]:
         try:
             return await self.repo.update_username(id, username)
         except NoResultFound as e:
@@ -73,15 +75,14 @@ class UserService:
             self.log.error("UserRepository: %s" % e)
         return None
 
-    async def update_role(self, id: str, is_staff: bool) -> bool:
+    async def update_role(self, id: str, is_staff: bool) -> Optional[User]:
         try:
-            await self.repo.update_role(id, is_staff)
-            return True
+            return await self.repo.update_role(id, is_staff)
         except NoResultFound as e:
             self.log.warning("UserRepository: %s" % e)
         except Exception as e:
             self.log.error("UserRepository: %s" % e)
-        return False
+        return None
 
     async def is_admin(self, id: str) -> bool:
         try:

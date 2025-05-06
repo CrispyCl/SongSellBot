@@ -1,10 +1,10 @@
 import asyncio
 from logging import Logger
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, cast, Dict, Optional
 
 from aiogram import BaseMiddleware
 from aiogram.dispatcher.event.bases import UNHANDLED
-from aiogram.types import Message, Update
+from aiogram.types import TelegramObject, Update, User
 
 
 class LoggingMiddleware(BaseMiddleware):
@@ -14,10 +14,12 @@ class LoggingMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-        update: Update,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        update: TelegramObject,
         data: Dict[str, Any],
-    ):
+    ) -> Any:
+        update = cast(Update, update)
+
         loop = asyncio.get_running_loop()
         start_time = loop.time()
         handled = False
@@ -34,9 +36,14 @@ class LoggingMiddleware(BaseMiddleware):
             format_string = '<%d> %-7s: "%s" from user %s. Duration %d ms'
             text = ""
             user_id = 0
+
+            def get_user(obj: Any) -> Optional[User]:
+                return getattr(obj, "from_user", None)
+
             if update.message:
+                user = get_user(update.message)
+                user_id = user.id if user else 0
                 text = update.message.text
-                user_id = update.message.from_user.id
             elif update.callback_query:
                 text = update.callback_query.data
                 user_id = update.callback_query.from_user.id

@@ -44,7 +44,10 @@ def load_config(path: str | None = None) -> Config:
             bot_token=env("BOT_TOKEN", default=""),
             debug=env.bool("DEBUG", default=True),
         ),
-        logger=LoggerConfig(debug=env.bool("DEBUG", default=True), file_path=env("LOGGER_FILE_PATH", default=None)),
+        logger=LoggerConfig(
+            debug=env.bool("DEBUG", default=True),
+            file_path=env("LOGGER_FILE_PATH", default="app.log"),
+        ),
         redis=RedisConfig(
             host=env("REDIS_HOST", default="localhost"),
             port=env.int("REDIS_PORT", default=6379),

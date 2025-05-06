@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from contextlib import _AsyncGeneratorContextManager
+from typing import Any
 
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -18,7 +20,7 @@ class DefaultDatabase(ABC):
         """Deleting all tables from the database."""
 
     @abstractmethod
-    async def get_session(self):
+    def get_session(self) -> _AsyncGeneratorContextManager[Any, None]:
         """Context manager for sessions."""
 
     @abstractmethod

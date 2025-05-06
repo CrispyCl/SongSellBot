@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from aiogram.filters import BaseFilter
 from aiogram.types import TelegramObject
@@ -10,7 +10,7 @@ class IsAdminFilter(BaseFilter):
     """Is admin filter."""
 
     async def __call__(self, obj: TelegramObject, **data: Any) -> bool:
-        user: User = data.get("current_user")
+        user: Optional[User] = data.get("current_user")
         if not user:
             return False
 
@@ -21,7 +21,7 @@ class IsSuperAdminFilter(BaseFilter):
     """Is super admin filter."""
 
     async def __call__(self, obj: TelegramObject, **data: Any) -> bool:
-        user: User = data.get("current_user")
+        user: Optional[User] = data.get("current_user")
         if not user:
             return False
 

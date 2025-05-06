@@ -5,7 +5,8 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.redis import Redis, RedisStorage
+from aiogram.fsm.storage.redis import RedisStorage
+from redis.asyncio.client import Redis
 
 from config import Config, load_config
 from database import DefaultDatabase, PostgresDatabase

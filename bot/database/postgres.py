@@ -28,7 +28,7 @@ class Database(DefaultDatabase):
             config.get_database_url(),
             echo=False,
         )
-        self.async_session = sessionmaker(bind=self.engine, class_=AsyncSession, expire_on_commit=False)
+        self.async_session = sessionmaker(bind=self.engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore
 
     async def init_db(self):
         """Creating all tables in the database."""
@@ -43,7 +43,7 @@ class Database(DefaultDatabase):
     @asynccontextmanager
     async def get_session(self):
         """Context manager for sessions."""
-        async with self.async_session() as session:
+        async with self.async_session() as session:  # type: ignore
             yield session
 
     async def close(self):

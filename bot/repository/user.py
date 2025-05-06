@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,14 +33,14 @@ class UserRepository:
                 raise IntegrityError(
                     statement=e.statement,
                     params=e.params,
-                    orig="User already exists",
+                    orig=Exception("User already exists"),
                 )
 
             except Exception as e:
                 await session.rollback()
                 raise e
 
-    async def get_one(self, id: str) -> User:
+    async def get_one(self, id: str) -> Optional[User]:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
@@ -49,7 +51,7 @@ class UserRepository:
             except Exception as e:
                 raise e
 
-    async def get_by_username(self, username: str) -> User:
+    async def get_by_username(self, username: str) -> Optional[User]:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
@@ -64,7 +66,8 @@ class UserRepository:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
-                return (await session.execute(select(User).order_by(User.id))).scalars().all()
+                result = (await session.execute(select(User).order_by(User.id))).scalars().all()
+                return list(result)
             except Exception as e:
                 raise e
 
