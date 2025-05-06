@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
@@ -14,6 +14,13 @@ class User(Base):
     is_staff: Mapped[bool] = mapped_column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     date_joined: Mapped[datetime] = mapped_column(DateTime, default=datetime.now())
+
+    wishlist = relationship("Song", secondary="wishlist", back_populates="customers")
+    view_history = relationship(
+        "SongHistory",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, is_staff={self.is_staff})>"
