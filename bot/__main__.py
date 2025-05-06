@@ -14,8 +14,8 @@ from handlers import commands_router
 from keyboards.set_menu import setup_menu
 from logger import get_logger
 from middleware import setup as setup_middlewares
-from repository import UserRepository
-from service import UserService
+from repository import GenreRepository, SongHistoryRepository, SongRepository, UserRepository, WishlistRepository
+from service import GenreService, UserService, SongService
 
 
 async def shutdown(
@@ -92,10 +92,18 @@ async def main() -> None:
 
     logger.debug("Registering repositories...")
     user_repository = UserRepository(db)
+    song_repository = SongRepository(db)
+    song_history_repository = SongHistoryRepository(db)
+    genre_repository = GenreRepository(db)
+    wishlist_repository = WishlistRepository(db)
 
     logger.debug("Registering services...")
-    user_service = UserService(user_repository, logger)
+    user_service = UserService(user_repository, wishlist_repository, song_history_repository, logger)
     dp.workflow_data["user_service"] = user_service
+    song_service = SongService(song_repository, genre_repository, logger)
+    dp.workflow_data["song_service"] = song_service
+    genre_service = GenreService(genre_repository, logger)
+    dp.workflow_data["genre_service"] = genre_service
 
     logger.debug("Registering routers...")
     dp.include_router(commands_router)
