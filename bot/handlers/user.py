@@ -36,12 +36,12 @@ TempoRus = {
 async def cmd_catalog(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(FSMUser.music_list)
-    # Выбор типа песни
+
     await message.answer(
         "<b>🎵 Добро пожаловать в каталог песен!</b>\n\n"
         "Здесь вы можете найти песни по вашему вкусу.\n"
         "Сначала выберите тип песни, который вам интересен 👇",
-        reply_markup=ToMainMenu()(),  # Кнопка "⬅️ В меню", если она у тебя там
+        reply_markup=ToMainMenu()(),
     )
 
     keyboard = InlineKeyboardMarkup(
@@ -197,6 +197,7 @@ async def nav_prev(
 ):
     data = await state.get_data()
     idx = (data["index"] - 1) % len(data["songs_list"])
+    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
@@ -212,6 +213,7 @@ async def nav_next(
 ):
     data = await state.get_data()
     idx = (data["index"] + 1) % len(data["songs_list"])
+    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
@@ -326,6 +328,139 @@ async def send_current(
                 InlineKeyboardButton(text="🎵 Другой тип", callback_data="nav:type"),
             ],
             [InlineKeyboardButton(text="❤️ Мне нравится", callback_data="nav:like")],
+        ],
+    )
+
+    if song.file_id:
+        await msg_obj.answer_video(song.file_id, caption=text, reply_markup=keyboard)
+    else:
+        await msg_obj.answer(text, reply_markup=keyboard)
+
+
+"""Wishlist handlers"""
+
+
+@router.message(F.text == "🛒 Корзина")
+@router.message(Command("wishlist"))
+async def cmd_wishlist(
+    message: Message,
+    state: FSMContext,
+    song_service: SongService,
+    user_service: UserService,
+    current_user: User,
+):
+    await state.clear()
+    await state.set_state(FSMUser.music_list)
+
+    songs = await user_service.get_wishlist(current_user.id)
+    if not songs:
+        return await message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())
+
+    await message.answer("🧺 Ваша корзина:", reply_markup=ToMainMenu()())
+    ids = [s.id for s in songs]
+    await state.update_data(songs_list=ids, index=0, in_wishlist=True)
+    return await send_wishlist_current(
+        message,
+        state,
+        song_service=song_service,
+    )
+
+
+# Навигация по Wishlist
+@router.callback_query(FSMUser.music_list, F.data == "wish:prev")
+async def wish_prev(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    idx = (data["index"] - 1) % len(data["songs_list"])
+    await callback.message.delete()  # type: ignore
+    await state.update_data(index=idx)
+    await send_wishlist_current(
+        callback.message,
+        state,
+        song_service=song_service,
+    )
+    await callback.answer()
+
+
+@router.callback_query(FSMUser.music_list, F.data == "wish:next")
+async def wish_next(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    idx = (data["index"] + 1) % len(data["songs_list"])
+    await callback.message.delete()  # type: ignore
+    await state.update_data(index=idx)
+    await send_wishlist_current(
+        callback.message,
+        state,
+        song_service=song_service,
+    )
+    await callback.answer()
+
+
+@router.callback_query(FSMUser.music_list, F.data == "wish:remove")
+async def wish_remove(
+    callback: CallbackQuery,
+    state: FSMContext,
+    song_service: SongService,
+    user_service: UserService,
+    current_user: User,
+):
+    data = await state.get_data()
+
+    idx = data["index"]
+    song_id = data["songs_list"][idx]
+    await user_service.remove_from_wishlist(current_user.id, song_id)
+    song = await song_service.get_one(song_id)
+    if not song:
+        await callback.message.answer("🔎 Песня не найдена")  # type: ignore
+        await cmd_wishlist(callback.message, state)
+        return
+    await user_service.log_view(
+        current_user.id,
+        song.title,
+        "remove",
+    )
+
+    songs_list = data["songs_list"]
+    songs_list.pop(idx)
+    if not songs_list:
+        await state.clear()
+        await callback.message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())  # type: ignore
+        await callback.answer()
+        return
+
+    new_idx = idx % len(songs_list)
+    await state.update_data(songs_list=songs_list, index=new_idx)
+    await send_wishlist_current(
+        callback.message,
+        state,
+        song_service=song_service,
+    )
+    await callback.answer("🗑 Удалено из корзины")
+
+
+async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    idx = data["index"]
+    song_id = data["songs_list"][idx]
+    song = await song_service.get_one(song_id)
+    if not song:
+        await msg_obj.answer("🔎 Песня не найдена")
+        return
+
+    text = (
+        f"🎵 <b>{song.title}</b>\n\n"
+        f"<b>Тип:</b> {TypeRus[song.type.value]}\n"
+        f"<b>Темп:</b> {TempoRus[song.tempo.value].replace('_', ' ')}\n"
+        f"<b>Жанры:</b> " + ", ".join(f"<i>#{g.title}</i>" for g in song.genres)
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⬅️", callback_data="wish:prev"),
+                InlineKeyboardButton(text="➡️", callback_data="wish:next"),
+            ],
+            [InlineKeyboardButton(text="🗑 Удалить", callback_data="wish:remove")],
+            [InlineKeyboardButton(text="⬅️ В меню", callback_data="to_main")],
         ],
     )
 
