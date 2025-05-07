@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import DefaultDatabase
-from models import Genre, Song, SongTempo, SongType
+from models import Genre, GenreToSong, Song, SongTempo, SongType
 
 
 class SongRepository:
@@ -41,19 +41,13 @@ class SongRepository:
                 await session.rollback()
                 raise e
 
-    async def add_genre(self, song_id: int, genre_id: int) -> Song:
+    async def add_genre(self, song_id: int, genre_id: int) -> None:
         async with self.db.get_session() as session:
             session: AsyncSession
-            stmt = select(Song).join(Song.genres).where(Song.id == song_id)
-            song = (await session.execute(stmt)).scalar_one_or_none()
-            genre = await session.get(Genre, genre_id)
-            if not song or not genre:
-                raise NoResultFound(f"Song with id={song_id} and genre_id={genre_id} does not exist")
+            stmt = GenreToSong(song_id=song_id, genre_id=genre_id)
 
-            song.genres.append(genre)
-            await session.refresh(song)
+            session.add(stmt)
             await session.commit()
-            return song
 
     async def get_one(self, id: int) -> Optional[Song]:
         async with self.db.get_session() as session:

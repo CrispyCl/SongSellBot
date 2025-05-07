@@ -1,6 +1,6 @@
 from models.association import SongHistory, Wishlist
-from models.song import Genre, Song, SongTempo, SongType
+from models.song import Genre, GenreToSong, Song, SongTempo, SongType
 from models.user import User
 
 
-__all__ = ["User", "Song", "Genre", "SongType", "SongTempo", "Wishlist", "SongHistory"]
+__all__ = ["User", "Song", "Genre", "GenreToSong", "SongType", "SongTempo", "Wishlist", "SongHistory"]

@@ -10,9 +10,9 @@ from repository import GenreRepository, SongRepository
 class SongService:
     """Song Service class"""
 
-    def __init__(self, song_repo: SongRepository, genre_repo: GenreRepository, logger: Logger):
+    def __init__(self, song_repo: SongRepository, genre_service: "GenreService", logger: Logger):
         self.song_repo = song_repo
-        self.genre_repo = genre_repo
+        self.genre_serv = genre_service
         self.log = logger
 
     async def create(
@@ -56,17 +56,15 @@ class SongService:
             )
             if song_id < 0:
                 return None
-            song = await self.song_repo.get_one(song_id)
             for title in genre_ids:
                 try:
-                    try:
-                        genre = await self.genre_repo.get_by_title(title)
-                        gid = genre.id
-                    except NoResultFound:
-                        gid = await self.genre_repo.create(title)
-                    song = await self.song_repo.add_genre(song_id, gid)
+                    genre = await self.genre_serv.get_or_create(title)
+                    if not genre:
+                        continue
+                    await self.song_repo.add_genre(song_id, genre.id)
                 except NoResultFound as ge:
                     self.log.warning("Genre или Song не найдены: %s", ge)
+            song = await self.song_repo.get_one(song_id)
             return song
         except Exception as e:
             self.log.error("SongService.create_with_genres: %s", e)
@@ -158,6 +156,17 @@ class GenreService:
         except Exception as e:
             self.log.error("GenreRepository: %s", e)
         return []
+
+    async def get_or_create(self, title: str) -> Optional[Genre]:
+        try:
+            genre = await self.get_by_title(title)
+            if genre:
+                return genre
+            ganre_id = await self.create(title)
+            return await self.get_one(ganre_id)
+        except Exception as e:
+            self.log.error("GenreRepository: %s", e)
+        return None
 
 
 __all__ = [
