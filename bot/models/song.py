@@ -1,5 +1,5 @@
 from enum import Enum as PyEnum
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import Enum as SqlEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,8 +26,8 @@ class Song(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     author_id: Mapped[str] = mapped_column(String(20), ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(150), nullable=False)
-    lyrics: Mapped[str] = mapped_column(Text, nullable=True)
-    file_id: Mapped[str] = mapped_column(String, nullable=True)
+    lyrics: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    file_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     type: Mapped[SongType] = mapped_column(SqlEnum(SongType), default=SongType.universal)
     tempo: Mapped[SongTempo] = mapped_column(SqlEnum(SongTempo), default=SongTempo.mid_tempo)
 

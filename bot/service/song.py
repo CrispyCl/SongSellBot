@@ -86,6 +86,31 @@ class SongService:
             self.log.error("SongRepository: %s", e)
         return []
 
+    async def get_by_filter(
+        self,
+        type_str: Optional[str],
+        tempo_str: Optional[str],
+        genre_titles: Optional[List[str]],
+    ) -> List[Song]:
+        try:
+            type = None
+            tempo = None
+            genre_ids = []
+            if type_str:
+                type = SongType(type_str)
+            if tempo_str:
+                tempo = SongTempo(tempo_str)
+            if genre_titles:
+                for title in genre_titles:
+                    genre = await self.genre_serv.get_or_create(title)
+                    if not genre:
+                        continue
+                    genre_ids.append(genre.id)
+            return await self.song_repo.get_by_filter(type, tempo, genre_ids)
+        except Exception as e:
+            self.log.error("SongRepository: %s", e)
+        return []
+
     async def update(
         self,
         song_id: int,

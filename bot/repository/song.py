@@ -3,6 +3,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from database import DefaultDatabase
 from models import Genre, GenreToSong, Song, SongTempo, SongType
@@ -52,7 +53,10 @@ class SongRepository:
     async def get_one(self, id: int) -> Optional[Song]:
         async with self.db.get_session() as session:
             session: AsyncSession
-            song = await session.get(Song, id)
+            stmt = select(Song).where(Song.id == id).options(joinedload(Song.genres))
+
+            result = await session.execute(stmt)
+            song = result.scalars().first()
             if not song:
                 raise NoResultFound(f"Song with id={id} does not exist")
             return song
@@ -61,6 +65,24 @@ class SongRepository:
         async with self.db.get_session() as session:
             session: AsyncSession
             result = await session.execute(select(Song).order_by(Song.id))
+            return list(result.scalars().all())
+
+    async def get_by_filter(
+        self,
+        type: Optional[SongType],
+        tempo: Optional[SongTempo],
+        genre_ids: List[int],
+    ) -> List[Song]:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+            stmt = select(Song)
+            if type is not None:
+                stmt = stmt.where(Song.type == type)
+            if tempo is not None:
+                stmt = stmt.where(Song.tempo == tempo)
+            if genre_ids:
+                stmt = stmt.join(GenreToSong).where(GenreToSong.genre_id.in_(genre_ids))
+            result = await session.execute(stmt)
             return list(result.scalars().all())
 
     async def update(

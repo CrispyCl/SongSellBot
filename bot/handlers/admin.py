@@ -172,7 +172,7 @@ async def handle_confirmation(message: Message, state: FSMContext):
         f"🎶 Название: {data['title']}\n"
         f"🎚 Тип: {TypeRus[data['type_str']].capitalize()}\n"
         f"🎛 Темп: {TempoRus[data['tempo_str']].capitalize()}\n"
-        f"🎭 Жанры: {', '.join(data['genre_ids'])}\n"
+        f"🎭 Жанры: {', '.join(s.capitalize() for s in data['genre_ids'])}\n"
         f"📝 Текст: {'указан' if data['lyrics'] else 'не указан'}\n"
         f"🎥 Видео: {'добавлено' if data.get('video_id') else 'отсутствует'}"
     )

@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from models import User
+from models import Song, User
 from repository import SongHistoryRepository, UserRepository, WishlistRepository
 
 
@@ -125,6 +125,13 @@ class UserService:
         except Exception as e:
             self.log.error("WishlistRepository: %s", e)
         return False
+
+    async def get_wishlist(self, user_id: str) -> list[Song]:
+        try:
+            return await self.repo.get_wishlist(user_id)
+        except Exception as e:
+            self.log.error("WishlistRepository: %s", e)
+        return []
 
     async def remove_from_wishlist(self, user_id: str, song_id: int) -> bool:
         try:
