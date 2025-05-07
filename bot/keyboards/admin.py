@@ -5,7 +5,11 @@ class AdminPanelKeyboard:
     def __call__(self) -> ReplyKeyboardMarkup:
         buttons: list[list[KeyboardButton]] = [
             [KeyboardButton(text="🏠 На главную")],
-            [KeyboardButton(text="🎵 Добавить песню"), KeyboardButton(text="📜 История пользователя")],
+            [
+                KeyboardButton(text="🎵 Добавить песню"),
+                KeyboardButton(text="🗑 Удалить песню"),
+            ],
+            [KeyboardButton(text="📜 История пользователя")],
         ]
         return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

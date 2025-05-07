@@ -14,7 +14,8 @@ class FSMAdmin(StatesGroup):
     enter_lyrics = State()
     upload_video = State()
     confirm_data = State()
-
+    # Song deletion
+    enter_delete_title = State()
     # User history
     enter_username = State()
 

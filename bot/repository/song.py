@@ -3,10 +3,10 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import DefaultDatabase
-from models import Genre, GenreToSong, Song, SongTempo, SongType
+from models import Genre, GenreToSong, Song, SongTempo, SongType, User
 
 
 class SongRepository:
@@ -61,6 +61,17 @@ class SongRepository:
                 raise NoResultFound(f"Song with id={id} does not exist")
             return song
 
+    async def get_by_title(self, title: str) -> Song:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+            stmt = select(Song).where(Song.title == title).options(joinedload(Song.genres))
+
+            result = await session.execute(stmt)
+            song = result.scalars().first()
+            if not song:
+                raise NoResultFound(f"Song with title={title} does not exist")
+            return song
+
     async def get_all(self) -> List[Song]:
         async with self.db.get_session() as session:
             session: AsyncSession
@@ -84,6 +95,17 @@ class SongRepository:
                 stmt = stmt.join(GenreToSong).where(GenreToSong.genre_id.in_(genre_ids))
             result = await session.execute(stmt)
             return list(result.scalars().all())
+
+    async def get_customers(self, id: int) -> List[User]:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+            stmt = select(Song).options(selectinload(Song.customers)).filter(Song.id == id)
+            result = await session.execute(stmt)
+            song: Optional[Song] = result.scalars().first()
+
+            if not song:
+                raise NoResultFound(f"Song with id={id} does not exist")
+            return song.customers
 
     async def update(
         self,

@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from models import Genre, Song, SongTempo, SongType
+from models import Genre, Song, SongTempo, SongType, User
 from repository import GenreRepository, SongRepository
 
 
@@ -79,9 +79,25 @@ class SongService:
             self.log.error("SongRepository: %s", e)
         return None
 
+    async def get_by_title(self, title: str) -> Optional[Song]:
+        try:
+            return await self.song_repo.get_by_title(title)
+        except NoResultFound as e:
+            self.log.warning("SongRepository: %s", e)
+        except Exception as e:
+            self.log.error("SongRepository: %s", e)
+        return None
+
     async def get_all(self) -> List[Song]:
         try:
             return await self.song_repo.get_all()
+        except Exception as e:
+            self.log.error("SongRepository: %s", e)
+        return []
+
+    async def get_customers(self, song_id: int) -> List[User]:
+        try:
+            return await self.song_repo.get_customers(song_id)
         except Exception as e:
             self.log.error("SongRepository: %s", e)
         return []

@@ -227,6 +227,42 @@ async def cancel_handler(message: Message, state: FSMContext):
     await handle_admin_panel(message, state)
 
 
+@router.message(F.text == "🗑 Удалить песню")
+async def admin_start_delete(message: Message, state: FSMContext):
+    await state.set_state(FSMAdmin.enter_delete_title)
+    await message.answer(
+        "🗑 Введите точное название песни для удаления:",
+        reply_markup=CancelKeyboard()(),
+    )
+
+
+@router.message(FSMAdmin.enter_delete_title)
+async def admin_process_delete(
+    message: Message,
+    state: FSMContext,
+    song_service: SongService,
+    user_service: UserService,
+):
+    title = str(message.text).strip()
+    song = await song_service.get_by_title(title)
+
+    if not song:
+        await message.answer(f"❌ Песня «{title}» не найдена.")
+        await state.clear()
+        await handle_admin_panel(message, state)
+        return
+
+    for customer in await song_service.get_customers(song.id):
+        await user_service.log_view(customer.id, song.title, "delete")
+    await song_service.delete(song.id)
+    await state.clear()
+    await message.answer(
+        f"✅ Песня с названием «{title}» удалена",
+        reply_markup=AdminPanelKeyboard()(),
+    )
+    await handle_admin_panel(message, state)
+
+
 """User history handlers"""
 
 PAGE_SIZE = 20
