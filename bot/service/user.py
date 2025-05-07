@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from models import Song, User
+from models import Song, SongHistory, User
 from repository import SongHistoryRepository, UserRepository, WishlistRepository
 
 
@@ -147,6 +147,13 @@ class UserService:
         except Exception as e:
             self.log.error("SongHistoryRepository: %s", e)
             return None
+
+    async def get_history(self, user_id: str) -> list[SongHistory]:
+        try:
+            return await self.repo.get_history(user_id)
+        except Exception as e:
+            self.log.error("SongHistoryRepository: %s", e)
+        return []
 
 
 __all__ = ["UserService"]

@@ -6,6 +6,7 @@ class FSMUser(StatesGroup):
 
 
 class FSMAdmin(StatesGroup):
+    # Song creation
     enter_title = State()
     select_type = State()
     select_tempo = State()
@@ -13,6 +14,9 @@ class FSMAdmin(StatesGroup):
     enter_lyrics = State()
     upload_video = State()
     confirm_data = State()
+
+    # User history
+    enter_username = State()
 
 
 __all__ = ["FSMUser"]

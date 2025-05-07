@@ -1,15 +1,18 @@
+import csv
+import io
+import math
 from typing import cast
 
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Video
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Video
 
 from filters import IsAdminFilter
 from fsm import FSMAdmin
 from keyboards import AcceptCancelKeyboard, AdminPanelKeyboard, CancelKeyboard
 from models import SongTempo, SongType, User
-from service import GenreService, SongService
+from service import GenreService, SongService, UserService
 
 router = Router()
 router.message.filter(IsAdminFilter())
@@ -222,6 +225,148 @@ async def cancel_handler(message: Message, state: FSMContext):
     await message.answer("🚫 Действие отменено", reply_markup=AdminPanelKeyboard()())
 
     await handle_admin_panel(message, state)
+
+
+"""User history handlers"""
+
+PAGE_SIZE = 20
+
+
+@router.message(F.text == "📜 История пользователя")
+async def admin_request_history(message: Message, state: FSMContext, user_service: UserService):
+    await state.clear()
+    await state.set_state(FSMAdmin.enter_username)
+
+    users = await user_service.get()
+    users_text = "\n".join([f"👤 @{u.username} (ID: {u.id})" for u in users])
+
+    await message.answer(
+        f"📜 Введите ID пользователя или его username, чтобы получить историю просмотров:\n\n"
+        f"<b>Список пользователей:</b>\n{users_text}",
+        reply_markup=CancelKeyboard()(),
+        parse_mode="HTML",
+    )
+
+
+@router.message(FSMAdmin.enter_username)
+async def admin_process_username(
+    message: Message,
+    state: FSMContext,
+    user_service: UserService,
+):
+    identifier = str(message.text).strip()
+    user = await user_service.get_by_username(identifier)
+    if not user:
+        user = await user_service.get_one(identifier)
+    if not user:
+        await message.answer("❌ Пользователь не найден. Попробуйте ещё раз или /cancel.")
+        return
+
+    await state.update_data(
+        target_user_id=str(user.id),
+        target_username=user.username,
+        history_page=0,
+    )
+    await show_history_page(message, state, user_service)
+
+
+async def show_history_page(msg: Message | CallbackQuery, state: FSMContext, user_service: UserService):
+    data = await state.get_data()
+    user_id = data["target_user_id"]
+    username = data["target_username"]
+    page = data["history_page"]
+
+    history = await user_service.get_history(user_id)
+    total = len(history)
+    pages = math.ceil(total / PAGE_SIZE)
+
+    start = page * PAGE_SIZE
+    end = start + PAGE_SIZE
+    chunk = history[::-1][start:end]
+
+    lines = []
+    for rec in chunk:
+        action_fixed = f"{rec.action:<6}"
+        ts_str = rec.viewed_at.strftime("%d.%m.%Y %H:%M")
+        lines.append(f"{ts_str} — <i>{action_fixed}</i> — <b>{rec.song_title}</b>")
+
+    header = f"📜 <b>История @{username}</b> " f"({start+1}–{min(end, total)} из {total}):\n\n"
+    text = header + "\n".join(lines)
+
+    cart_items = await user_service.get_wishlist(user_id)
+
+    if cart_items:
+        cart_text = "\n".join([f"🛒 {item.title}" for item in cart_items])
+        text += f"\n\n<b>Корзина:</b>\n{cart_text}"
+    else:
+        text += "\n\n<b>Корзина пуста.</b>"
+
+    # Кнопки навигации
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Назад", callback_data="history:prev"))
+    if page < pages - 1:
+        nav_row.append(InlineKeyboardButton(text="➡️ Далее", callback_data="history:next"))
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            nav_row,
+            [InlineKeyboardButton(text="📥 Экспорт CSV", callback_data="history:export")],
+            [InlineKeyboardButton(text="🏠 В админ-панель", callback_data="admin:panel")],
+        ],
+    )
+
+    if isinstance(msg, CallbackQuery):
+        await msg.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")  # type: ignore
+        await msg.answer()
+    else:
+        await msg.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "history:export")
+async def history_export(callback: CallbackQuery, state: FSMContext, user_service: UserService):
+    data = await state.get_data()
+    user_id = data["target_user_id"]
+    username = data["target_username"]
+
+    history = (await user_service.get_history(user_id))[::-1]
+
+    # Создаём CSV в памяти
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Timestamp", "Action", "Song Title"])
+    for rec in history:
+        ts = rec.viewed_at.strftime("%Y-%m-%d %H:%M:%S")
+        writer.writerow([ts, rec.action, rec.song_title])
+    csv_text = buffer.getvalue().encode("utf-8")  # bytes
+
+    file = BufferedInputFile(csv_text, filename=f"history_{username}.csv")
+
+    await callback.message.answer_document(  # type: ignore
+        document=file,
+        caption=f"Экспорт истории @{username}",
+    )
+    await callback.answer("Файл CSV отправлен")
+
+
+@router.callback_query(F.data == "history:prev")
+async def history_prev(callback: CallbackQuery, state: FSMContext, user_service: UserService):
+    data = await state.get_data()
+    await state.update_data(history_page=data["history_page"] - 1)
+    await show_history_page(callback, state, user_service)
+
+
+@router.callback_query(F.data == "history:next")
+async def history_next(callback: CallbackQuery, state: FSMContext, user_service: UserService):
+    data = await state.get_data()
+    await state.update_data(history_page=data["history_page"] + 1)
+    await show_history_page(callback, state, user_service)
+
+
+@router.callback_query(F.data == "admin:panel")
+async def history_back(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.answer()
+    await handle_admin_panel(callback.message, state)
 
 
 __all__ = ["router"]
