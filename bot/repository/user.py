@@ -1,11 +1,12 @@
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from database import DefaultDatabase
-from models import User
+from models import Song, SongHistory, User
 
 
 class UserRepository:
@@ -40,7 +41,7 @@ class UserRepository:
                 await session.rollback()
                 raise e
 
-    async def get_one(self, id: str) -> Optional[User]:
+    async def get_one(self, id: str) -> User:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
@@ -51,7 +52,7 @@ class UserRepository:
             except Exception as e:
                 raise e
 
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
@@ -62,7 +63,7 @@ class UserRepository:
             except Exception as e:
                 raise e
 
-    async def get(self) -> list[User]:
+    async def get(self) -> List[User]:
         async with self.db.get_session() as session:
             session: AsyncSession
             try:
@@ -102,6 +103,30 @@ class UserRepository:
             except Exception as e:
                 await session.rollback()
                 raise e
+
+    async def get_wishlist(self, user_id: str) -> List[Song]:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+
+            stmt = select(User).options(selectinload(User.wishlist)).filter(User.id == user_id)
+            result = await session.execute(stmt)
+            user: Optional[User] = result.scalars().first()
+
+            if not user:
+                raise NoResultFound(f"User with id={user_id} does not exist")
+            return user.wishlist
+
+    async def get_history(self, user_id: str) -> List[SongHistory]:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+
+            stmt = select(User).options(selectinload(User.view_history)).filter(User.id == user_id)
+            result = await session.execute(stmt)
+            user: Optional[User] = result.scalars().first()
+
+            if not user:
+                raise NoResultFound(f"User with id={user_id} does not exist")
+            return user.view_history
 
 
 __all__ = ["UserRepository"]
