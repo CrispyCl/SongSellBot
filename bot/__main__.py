@@ -79,8 +79,13 @@ async def main() -> None:
         logger.fatal("Database connection failed: %s", str(e))
         return
 
-    bot = Bot(token=config.bot.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher(storage=storage)
+    logger.debug("Initializing the bot...")
+    try:
+        bot = Bot(token=config.bot.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        dp = Dispatcher(storage=storage)
+    except Exception as e:
+        logger.fatal("Bot initialization failed: %s", str(e))
+        return
     dp.workflow_data["logger"] = logger
     dp.workflow_data["database"] = db
 

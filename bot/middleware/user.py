@@ -36,7 +36,8 @@ class CurrentUserMiddleware(BaseMiddleware):
         if not current_user:
             return await handler(update, data)
 
-        current_user = await self.user_service.update_username(current_user.id, username)
+        if current_user.username != username:
+            current_user = await self.user_service.update_username(current_user.id, username)
 
         data["current_user"] = current_user
         return await handler(update, data)

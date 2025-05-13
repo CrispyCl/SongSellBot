@@ -41,7 +41,7 @@ def load_config(path: str | None = None) -> Config:
 
     return Config(
         bot=BotConfig(
-            bot_token=env("BOT_TOKEN", default=""),
+            bot_token=env("BOT_TOKEN", default="").replace("\\x3a", ":"),
             debug=env.bool("DEBUG", default=True),
         ),
         logger=LoggerConfig(

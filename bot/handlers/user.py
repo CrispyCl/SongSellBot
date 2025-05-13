@@ -450,7 +450,8 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
         f"🎵 <b>{song.title}</b>\n\n"
         f"<b>Тип:</b> {TypeRus[song.type.value]}\n"
         f"<b>Темп:</b> {TempoRus[song.tempo.value].replace('_', ' ')}\n"
-        f"<b>Жанры:</b> " + ", ".join(f"<i>#{g.title}</i>" for g in song.genres)
+        f"<b>Жанры:</b> " + ", ".join(f"<i>#{g.title}</i>" for g in song.genres) + "\n\n"
+        f"<b>Текст песни:</b>\n{song.lyrics or '🔇 Текст отсутствует'}"
     )
 
     keyboard = InlineKeyboardMarkup(
