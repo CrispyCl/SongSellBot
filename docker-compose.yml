@@ -9,7 +9,7 @@ services:
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
       DEBUG: ${DEBUG} 
-      LOGGER_FILE_PATH: ${LOGGER_FILE_PATH}
+      LOGGER_FILE_PATH: /app/logs/app.log
 
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -18,6 +18,8 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT}
+    volumes:
+      - ./logs:/app/logs
     networks:
       - app-network
     depends_on:
