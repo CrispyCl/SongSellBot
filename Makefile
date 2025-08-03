@@ -53,17 +53,21 @@ docker-build: clean
 # Run containers with docker-compose
 docker-up:
 	@echo "Starting containers..."
-	@docker-compose up --build
+	@docker compose up --build
+
+docker-up-d:
+	@echo "Starting containers..."
+	@docker compose up --build -d
 
 # Start database
 docker-database:
 	@echo "Starting database..."
-	@docker-compose up -d redis postgres
+	@docker compose up -d redis postgres
 
 # Stop containers
 docker-down:
 	@echo "Stopping containers..."
-	@docker-compose down
+	@docker compose down
 
 # Restart containers
 docker-restart: docker-down docker-up
