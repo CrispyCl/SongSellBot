@@ -435,6 +435,7 @@ async def wish_remove(
         song_service=song_service,
     )
     await callback.answer("🗑 Удалено из корзины")
+    await callback.message.delete()  # type: ignore
 
 
 async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongService):

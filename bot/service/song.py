@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from models import Genre, Song, SongTempo, SongType, User
+from models import FileType, Genre, Song, SongTempo, SongType, User
 from repository import GenreRepository, SongRepository
 
 
@@ -21,13 +21,23 @@ class SongService:
         title: str,
         lyrics: Optional[str] = None,
         file_id: Optional[str] = None,
+        file_type_str: Optional[str] = None,
         type_str: str = "universal",
         tempo_str: str = "mid_tempo",
     ) -> int:
         try:
+            file_type = FileType(file_type_str) if file_type_str else None
             type = SongType(type_str)
             tempo = SongTempo(tempo_str)
-            return await self.song_repo.create(author_id, title, lyrics, file_id, type, tempo)
+            return await self.song_repo.create(
+                author_id=author_id,
+                title=title,
+                lyrics=lyrics,
+                file_id=file_id,
+                file_type=file_type,
+                type=type,
+                tempo=tempo,
+            )
         except IntegrityError as e:
             self.log.warning("SongRepository: %s", e)
         except Exception as e:
@@ -41,6 +51,7 @@ class SongService:
         genre_ids: List[str],
         lyrics: Optional[str] = None,
         file_id: Optional[str] = None,
+        file_type_str: Optional[str] = None,
         type_str: str = "universal",
         tempo_str: str = "mid_tempo",
     ) -> Optional[Song]:
@@ -51,6 +62,7 @@ class SongService:
                 title,
                 lyrics=lyrics,
                 file_id=file_id,
+                file_type_str=file_type_str,
                 type_str=type_str,
                 tempo_str=tempo_str,
             )
@@ -133,13 +145,23 @@ class SongService:
         title: Optional[str] = None,
         lyrics: Optional[str] = None,
         file_id: Optional[str] = None,
-        type_str: str = "universal",
-        tempo_str: str = "mid_tempo",
+        file_type_str: Optional[str] = None,
+        type_str: Optional[str] = None,
+        tempo_str: Optional[str] = None,
     ) -> Optional[Song]:
         try:
-            type = SongType(type_str)
-            tempo = SongTempo(tempo_str)
-            return await self.song_repo.update(song_id, title, lyrics, file_id, type, tempo)
+            file_type = FileType(file_type_str) if file_type_str else None
+            type = SongType(type_str) if type_str else None
+            tempo = SongTempo(tempo_str) if tempo_str else None
+            return await self.song_repo.update(
+                id=song_id,
+                title=title,
+                lyrics=lyrics,
+                file_id=file_id,
+                file_type=file_type,
+                type=type,
+                tempo=tempo,
+            )
         except NoResultFound as e:
             self.log.warning("SongRepository: %s", e)
         except Exception as e:

@@ -64,4 +64,4 @@ class GenreToSong(Base):
     song_id: Mapped[int] = mapped_column(Integer, ForeignKey("songs.id", ondelete="CASCADE"), primary_key=True)
 
 
-__all__ = ["Song", "SongType", "SongTempo", "Genre", "GenreToSong"]
+__all__ = ["FileType", "Song", "SongType", "SongTempo", "Genre", "GenreToSong"]

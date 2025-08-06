@@ -6,7 +6,15 @@ from typing import cast
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Video
+from aiogram.types import (
+    Audio,
+    BufferedInputFile,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    Video,
+)
 
 from filters import IsAdminFilter
 from fsm import FSMAdmin
@@ -52,6 +60,23 @@ async def handle_admin_panel(message: Message, state: FSMContext) -> None:
     await message.answer(text, reply_markup=keyboard)
 
 
+@router.message(F.text == "❌ Отменить", FSMAdmin.confirm_data)
+async def process_cancel(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🚫 Создание песни отменено", reply_markup=AdminPanelKeyboard()())
+
+    await handle_admin_panel(message, state)
+
+
+@router.message(Command("cancel"), ~StateFilter(None))
+@router.message(F.text == "❌ Отменить", ~StateFilter(None))
+async def cancel_handler(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🚫 Действие отменено", reply_markup=AdminPanelKeyboard()())
+
+    await handle_admin_panel(message, state)
+
+
 @router.message(F.text == "🎵 Добавить песню")
 async def start_create_song(message: Message, state: FSMContext):
     await state.set_state(FSMAdmin.enter_title)
@@ -59,9 +84,12 @@ async def start_create_song(message: Message, state: FSMContext):
 
 
 @router.message(FSMAdmin.enter_title)
-async def process_title(message: Message, state: FSMContext):
+async def process_title(message: Message, state: FSMContext, song_service: SongService):
     if len(str(message.text)) > 150:
         await message.answer("❌ Слишком длинное название (макс. 150 символов)")
+        return
+    if await song_service.get_by_title(str(message.text)):
+        await message.answer("❌ Песня с таким названием уже существует! ")
         return
 
     await state.update_data(title=message.text)
@@ -98,6 +126,7 @@ async def process_tempo(callback: CallbackQuery, state: FSMContext):
         reply_markup=CancelKeyboard()(),
     )
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.message(FSMAdmin.enter_genres)
@@ -144,10 +173,14 @@ async def process_lyrics(message: Message, state: FSMContext):
     await state.set_state(FSMAdmin.upload_video)
 
     await message.answer(
-        "🎥 Загрузите видеофайл песни (MP4/MPEG4):\n" "Или нажмите 'Пропустить' чтобы добавить позже",
+        "🎵 <b>Загрузите аудио или видео файл песни</b>\n"
+        "▸ Форматы: <code>MP3</code>, <code>MP4</code>\n"
+        "▸ Макс. размер: <code>50MB</code>\n\n"
+        "Или нажмите <b>«Пропустить»</b>, чтобы добавить позже",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="⏭ Пропустить", callback_data="skip_video")]],
         ),
+        parse_mode="HTML",
     )
 
 
@@ -156,13 +189,21 @@ async def process_lyrics(message: Message, state: FSMContext):
 async def process_video(message: Message, state: FSMContext):
     video = cast(Video, message.video)
 
-    await state.update_data(video_id=video.file_id)
+    await state.update_data(file_id=video.file_id, file_type="video")
+    await handle_confirmation(message, state)
+
+
+@router.message(FSMAdmin.upload_video, F.audio)
+async def process_audio(message: Message, state: FSMContext):
+    audio = cast(Audio, message.audio)
+
+    await state.update_data(file_id=audio.file_id, file_type="audio")
     await handle_confirmation(message, state)
 
 
 @router.callback_query(FSMAdmin.upload_video, F.data == "skip_video")
 async def skip_video(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(video_id=None)
+    await state.update_data(file_id=None)
     await handle_confirmation(callback.message, state)  # type: ignore
     await callback.answer()
 
@@ -177,7 +218,7 @@ async def handle_confirmation(message: Message, state: FSMContext):
         f"🎛 Темп: {TempoRus[data['tempo_str']].capitalize()}\n"
         f"🎭 Жанры: {', '.join(s.capitalize() for s in data['genre_ids'])}\n"
         f"📝 Текст: {'указан' if data['lyrics'] else 'не указан'}\n"
-        f"🎥 Видео: {'добавлено' if data.get('video_id') else 'отсутствует'}"
+        f"🎵 Медиа: {'добавлено' if data.get('file_id') else 'отсутствует'}"
     )
 
     await state.set_state(FSMAdmin.confirm_data)
@@ -195,7 +236,8 @@ async def process_confirm(message: Message, state: FSMContext, song_service: Son
         lyrics=data.get("lyrics"),
         type_str=data["type_str"],
         tempo_str=data["tempo_str"],
-        file_id=data.get("video_id"),
+        file_id=data.get("file_id"),
+        file_type_str=data.get("file_type", None),
     )
     if not song:
         await message.answer("❌ Ошибка создания песни")
@@ -206,23 +248,6 @@ async def process_confirm(message: Message, state: FSMContext, song_service: Son
         "✅ Песня успешно создана!",
         reply_markup=AdminPanelKeyboard()(),
     )
-
-    await handle_admin_panel(message, state)
-
-
-@router.message(F.text == "❌ Отменить", FSMAdmin.confirm_data)
-async def process_cancel(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer("🚫 Создание песни отменено", reply_markup=AdminPanelKeyboard()())
-
-    await handle_admin_panel(message, state)
-
-
-@router.message(Command("cancel"), ~StateFilter(None))
-@router.message(F.text == "❌ Отменить", ~StateFilter(None))
-async def cancel_handler(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer("🚫 Действие отменено", reply_markup=AdminPanelKeyboard()())
 
     await handle_admin_panel(message, state)
 
@@ -290,7 +315,7 @@ async def admin_process_username(
     state: FSMContext,
     user_service: UserService,
 ):
-    identifier = str(message.text).strip()
+    identifier = str(message.text).strip().lstrip("@")
     user = await user_service.get_by_username(identifier)
     if not user:
         user = await user_service.get_one(identifier)
@@ -403,6 +428,7 @@ async def history_back(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
     await handle_admin_panel(callback.message, state)
+    await callback.message.delete()  # type: ignore
 
 
 __all__ = ["router"]

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from database import DefaultDatabase
-from models import Genre, GenreToSong, Song, SongTempo, SongType, User
+from models import FileType, Genre, GenreToSong, Song, SongTempo, SongType, User
 
 
 class SongRepository:
@@ -21,6 +21,7 @@ class SongRepository:
         title: str,
         lyrics: Optional[str] = None,
         file_id: Optional[str] = None,
+        file_type: Optional[FileType] = None,
         type: SongType = SongType.universal,
         tempo: SongTempo = SongTempo.mid_tempo,
     ) -> int:
@@ -31,6 +32,7 @@ class SongRepository:
                 title=title,
                 lyrics=lyrics,
                 file_id=file_id,
+                file_type=file_type,
                 type=type,
                 tempo=tempo,
             )
@@ -113,6 +115,7 @@ class SongRepository:
         title: Optional[str] = None,
         lyrics: Optional[str] = None,
         file_id: Optional[str] = None,
+        file_type: Optional[FileType] = None,
         type: Optional[SongType] = None,
         tempo: Optional[SongTempo] = None,
     ) -> Song:
@@ -127,6 +130,8 @@ class SongRepository:
                 song.lyrics = lyrics
             if file_id is not None:
                 song.file_id = file_id
+            if file_type is not None:
+                song.file_type = file_type
             if type is not None:
                 song.type = type
             if tempo is not None:
