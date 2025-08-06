@@ -84,10 +84,11 @@ async def on_all(
         await callback.message.edit_text("😔 Песен данного типа не найдено.")  # type: ignore
         await cmd_catalog(callback.message, state)
         return
-    ids = [s.id for s in songs]
+    ids = list(dict.fromkeys(s.id for s in songs))
     await state.update_data(songs_list=ids, index=0)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "action:filter")
@@ -145,10 +146,11 @@ async def on_genre_done(
         await cmd_catalog(callback.message, state)
         return
 
-    ids = [s.id for s in songs]
+    ids = list(dict.fromkeys(s.id for s in songs))
     await state.update_data(songs_list=ids, index=0)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data.startswith("genre:"))
@@ -226,6 +228,7 @@ async def nav_type(callback: CallbackQuery, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎶 Выберите тип песни:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:tempo")
@@ -239,6 +242,7 @@ async def nav_tempo(callback: CallbackQuery, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:genre")
@@ -266,6 +270,7 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
     )
     await callback.message.answer("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:like")
@@ -357,7 +362,7 @@ async def cmd_wishlist(
         return await message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())
 
     await message.answer("🧺 Ваша корзина:", reply_markup=ToMainMenu()())
-    ids = [s.id for s in songs]
+    ids = list(dict.fromkeys(s.id for s in songs))
     await state.update_data(songs_list=ids, index=0, in_wishlist=True)
     return await send_wishlist_current(
         message,
@@ -425,6 +430,7 @@ async def wish_remove(
         await state.clear()
         await callback.message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())  # type: ignore
         await callback.answer()
+        await callback.message.delete()  # type: ignore
         return
 
     new_idx = idx % len(songs_list)
