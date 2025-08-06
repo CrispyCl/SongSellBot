@@ -7,6 +7,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 
+class FileType(PyEnum):
+    video = "video"
+    audio = "audio"
+
+
 class SongType(PyEnum):
     universal = "universal"
     male = "male"
@@ -28,6 +33,7 @@ class Song(Base):
     title: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
     lyrics: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     file_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    file_type: Mapped[Optional[FileType]] = mapped_column(SqlEnum(FileType), default=FileType.video, nullable=True)
     type: Mapped[SongType] = mapped_column(SqlEnum(SongType), default=SongType.universal)
     tempo: Mapped[SongTempo] = mapped_column(SqlEnum(SongTempo), default=SongTempo.mid_tempo)
 
