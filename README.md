@@ -15,6 +15,7 @@ copy .env.example .env
 Заполните файл переменными окружения.
 
 (Пример файла .env)
+
 ```yml
 # Bot environments
 BOT_TOKEN=
@@ -42,7 +43,7 @@ REDIS_PORT=6379
 docker-compose up -d redis postgres
 ```
 
-## Создайте сессию telethon:
+## Готовим бота к локальному запуску:
 
 ### Настройте и активируйте окружение:
 
@@ -63,15 +64,13 @@ venv\Scripts\activate
 pip install -r requirements/prod.txt
 ```
 
-### Затем выполните команду:
+### Применить миграции:
 
 ```bash
-python bot/scripts.py
+cd bot
+alembic upgrade head
+cd ..
 ```
-
-Выберите пункт 4 и следуйте инструкциям.
-
-#### Создание пользователя-администратора и получение ID канала происходит через тот же файл scripts.py.
 
 ## Запуск бота через Docker:
 
@@ -87,3 +86,17 @@ docker-compose up -d
 docker-compose up -d redis postgres
 python bot/
 ```
+
+## Добавляем пользователя-администратора:
+
+### Затем выполните команду:
+
+```bash
+python bot/scripts.py
+```
+
+#### Выберите пункт 1 и следуйте инструкциям.
+
+Пользователь предварительно должен написать боту /start
+
+После обновления прав пользователь должен написать боту /start
