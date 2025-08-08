@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -46,11 +46,39 @@ class SongRepository:
 
     async def add_genre(self, song_id: int, genre_id: int) -> None:
         async with self.db.get_session() as session:
-            session: AsyncSession
-            stmt = GenreToSong(song_id=song_id, genre_id=genre_id)
+            try:
+                session: AsyncSession
+                exists = await session.scalar(
+                    select(GenreToSong)
+                    .where(GenreToSong.song_id == song_id, GenreToSong.genre_id == genre_id)
+                    .limit(1),
+                )
 
-            session.add(stmt)
-            await session.commit()
+                if exists:
+                    return
+
+                stmt = GenreToSong(song_id=song_id, genre_id=genre_id)
+                session.add(stmt)
+                await session.commit()
+
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def remove_genre(self, song_id: int, genre_id: int) -> None:
+        async with self.db.get_session() as session:
+            try:
+                session: AsyncSession
+                result = await session.execute(
+                    delete(GenreToSong).where(GenreToSong.song_id == song_id, GenreToSong.genre_id == genre_id),
+                )
+
+                if result.rowcount == 0:
+                    return  # Связь не найдена
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
 
     async def get_one(self, id: int) -> Optional[Song]:
         async with self.db.get_session() as session:

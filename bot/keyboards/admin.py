@@ -1,4 +1,4 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 
 class AdminPanelKeyboard:
@@ -7,6 +7,7 @@ class AdminPanelKeyboard:
             [KeyboardButton(text="🏠 На главную")],
             [
                 KeyboardButton(text="🎵 Добавить песню"),
+                KeyboardButton(text="✏️ Изменить песню"),
                 KeyboardButton(text="🗑 Удалить песню"),
             ],
             [KeyboardButton(text="📜 История пользователя")],
@@ -22,4 +23,12 @@ class AcceptCancelKeyboard:
         return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 
-__all__ = ["AdminPanelKeyboard", "AcceptCancelKeyboard"]
+class EditionCancelKeyboart:
+    def __call__(self) -> InlineKeyboardMarkup:
+        buttons: list[list[InlineKeyboardButton]] = [
+            [InlineKeyboardButton(text="❌ Отменить", callback_data="edit_cancel")],
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+__all__ = ["AdminPanelKeyboard", "AcceptCancelKeyboard", "EditionCancelKeyboart"]

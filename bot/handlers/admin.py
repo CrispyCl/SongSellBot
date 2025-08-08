@@ -1,7 +1,7 @@
 import csv
 import io
 import math
-from typing import cast
+from typing import cast, List
 
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter
@@ -18,8 +18,8 @@ from aiogram.types import (
 
 from filters import IsAdminFilter
 from fsm import FSMAdmin
-from keyboards import AcceptCancelKeyboard, AdminPanelKeyboard, CancelKeyboard
-from models import SongTempo, SongType, User
+from keyboards import AcceptCancelKeyboard, AdminPanelKeyboard, CancelKeyboard, EditionCancelKeyboart
+from models import Genre, SongTempo, SongType, User
 from service import GenreService, SongService, UserService
 
 router = Router()
@@ -58,6 +58,9 @@ async def handle_admin_panel(message: Message, state: FSMContext) -> None:
 
     keyboard = AdminPanelKeyboard()()
     await message.answer(text, reply_markup=keyboard)
+
+
+"""Song creation handlers"""
 
 
 @router.message(F.text == "❌ Отменить", FSMAdmin.confirm_data)
@@ -184,7 +187,6 @@ async def process_lyrics(message: Message, state: FSMContext):
     )
 
 
-# Добавляем обработчик для видео
 @router.message(FSMAdmin.upload_video, F.video)
 async def process_video(message: Message, state: FSMContext):
     video = cast(Video, message.video)
@@ -261,6 +263,9 @@ async def admin_start_delete(message: Message, state: FSMContext):
     )
 
 
+"""Song deletion handlers"""
+
+
 @router.message(FSMAdmin.enter_delete_title)
 async def admin_process_delete(
     message: Message,
@@ -286,6 +291,360 @@ async def admin_process_delete(
         reply_markup=AdminPanelKeyboard()(),
     )
     await handle_admin_panel(message, state)
+
+
+@router.message(F.text == "✏️ Изменить песню")
+async def start_edit_song(message: Message, state: FSMContext):
+    await state.set_state(FSMAdmin.edit_song_enter_title)
+    await message.answer(
+        "✏️ Введите точное название песни для изменения:",
+        reply_markup=CancelKeyboard()(),
+    )
+
+
+@router.message(FSMAdmin.edit_song_enter_title)
+async def process_edit_song_title(message: Message, state: FSMContext, song_service: SongService):
+    title = str(message.text).strip()
+    song = await song_service.get_by_title(title)
+
+    if not song:
+        await message.answer(f"❌ Песня «{title}» не найдена")
+        await state.clear()
+        await handle_admin_panel(message, state)
+        return
+
+    await state.update_data(
+        song_id=str(song.id),
+        current_title=song.title,
+    )
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+async def show_edit_menu(message: Message, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+    song = await song_service.get_one(song_id)
+
+    if not song:
+        await message.answer("❌ Песня больше не существует!")
+        await state.clear()
+        return
+
+    genres = [g.title for g in song.genres]
+
+    text = (
+        "✏️ <b>Редактирование песни:</b>\n"
+        f"🎶 Название: {song.title}\n"
+        f"🎚 Тип: {TypeRus[song.type.value]}\n"
+        f"🎛 Темп: {TempoRus[song.tempo.value]}\n"
+        f"🎭 Жанры: {', '.join(genres) if genres else 'не указаны'}\n"
+        f"📝 Текст: {'указан' if song.lyrics else 'не указан'}\n"
+        f"🎵 Медиа: {'добавлено' if song.file_id else 'отсутствует'}\n\n"
+        "👇 Выберите поле для изменения:"
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Название", callback_data="edit_title")],
+            [InlineKeyboardButton(text="✏️ Тип", callback_data="edit_type")],
+            [InlineKeyboardButton(text="✏️ Темп", callback_data="edit_tempo")],
+            [InlineKeyboardButton(text="✏️ Жанры", callback_data="edit_genres")],
+            [InlineKeyboardButton(text="✏️ Текст", callback_data="edit_lyrics")],
+            [InlineKeyboardButton(text="✏️ Медиафайл", callback_data="edit_media")],
+            [InlineKeyboardButton(text="🏠 Выйти", callback_data="edit_exit")],
+        ],
+    )
+
+    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_title")
+async def edit_song_title(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(FSMAdmin.edit_song_title)
+    await callback.message.edit_text(  # type: ignore
+        "✏️ Введите новое название песни:",
+        reply_markup=EditionCancelKeyboart()(),
+    )
+    await callback.answer()
+
+
+@router.message(FSMAdmin.edit_song_title)
+async def process_edit_title(message: Message, state: FSMContext, song_service: SongService):
+    new_title = str(message.text).strip()
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    existing = await song_service.get_by_title(new_title)
+    if existing and existing.id != song_id:
+        await message.answer("❌ Песня с таким названием уже существует!")
+        return
+
+    if len(new_title) > 150:
+        await message.answer("❌ Слишком длинное название (макс. 150 символов)")
+        return
+
+    updated = await song_service.update(song_id=song_id, title=new_title)
+
+    if not updated:
+        await message.answer("❌ Ошибка при обновлении названия")
+        return
+
+    await state.update_data(current_title=new_title)
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_type")
+async def edit_song_type(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(FSMAdmin.edit_song_type)
+
+    buttons = [[InlineKeyboardButton(text=TypeRus[t.value], callback_data=t.value)] for t in SongType]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await callback.message.edit_text(  # type: ignore
+        "✏️ Выберите новый тип песни:",
+        reply_markup=keyboard,
+    )
+    await callback.answer()
+
+
+@router.callback_query(FSMAdmin.edit_song_type)
+async def process_edit_type(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    new_type = callback.data
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    updated = await song_service.update(song_id=song_id, type_str=new_type)
+
+    if not updated:
+        await callback.message.answer("❌ Ошибка при обновлении типа песни")  # type: ignore
+    else:
+        await callback.answer("✅ Тип песни обновлен")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(callback.message, state, song_service)  # pyright: ignore[reportArgumentType]
+    await callback.message.delete()  # type: ignore
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_tempo")
+async def edit_song_tempo(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(FSMAdmin.edit_song_tempo)
+
+    buttons = [[InlineKeyboardButton(text=TempoRus[t.value], callback_data=t.value)] for t in SongTempo]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await callback.message.edit_text(  # type: ignore
+        "✏️ Выберите новый темп песни:",
+        reply_markup=keyboard,
+    )
+    await callback.answer()
+
+
+@router.callback_query(FSMAdmin.edit_song_tempo)
+async def process_edit_tempo(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    new_tempo = callback.data
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    updated = await song_service.update(song_id=song_id, tempo_str=new_tempo)
+
+    if not updated:
+        await callback.message.answer("❌ Ошибка при обновлении темпа песни")  # type: ignore
+    else:
+        await callback.answer("✅ Темп песни обновлен")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(callback.message, state, song_service)  # type: ignore
+    await callback.message.delete()  # type: ignore
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_genres")
+async def edit_song_genres(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+    song = await song_service.get_one(song_id)
+
+    if song:
+        current_genres = ", ".join([g.title for g in song.genres])
+        await callback.message.answer(  # type: ignore
+            "✏️ Введите новые жанры через запятую:\n"
+            f"Текущие: {current_genres}\n\n"
+            "Отправьте 'удалить' чтобы очистить жанры",
+            reply_markup=EditionCancelKeyboart()(),
+        )
+        await state.set_state(FSMAdmin.edit_song_genres)
+    await callback.answer()
+    await callback.message.delete()  # type: ignore
+
+
+@router.message(FSMAdmin.edit_song_genres)
+async def process_edit_genres(
+    message: Message,
+    state: FSMContext,
+    song_service: SongService,
+    genre_service: GenreService,
+):
+    input_text = str(message.text).strip().lower()
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    if input_text == "удалить":
+        updated = await song_service.update_genres(song_id, [])
+        if not updated:
+            await message.answer("❌ Ошибка при удалении жанров")
+    else:
+        # Обработка новых жанров
+        genre_titles = [g.strip() for g in input_text.split(",") if g.strip()]
+
+        if len(genre_titles) > 3:
+            await message.answer("❌ Можно указать не более 3 жанров!")
+            return
+
+        # Получаем или создаем жанры
+        valid_genres: List[Genre] = []
+        for title in genre_titles:
+            if len(title) > 150:
+                await message.answer(f"❌ Название жанра слишком длинное: {title}")
+                return
+
+            genre = await genre_service.get_or_create(title)
+            if genre:
+                valid_genres.append(genre)
+
+        # Обновляем жанры песни
+        updated = await song_service.update_genres(song_id, [g.id for g in valid_genres])
+        if not updated:
+            await message.answer("❌ Ошибка при обновлении жанров")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_lyrics")
+async def edit_song_lyrics(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    await state.set_state(FSMAdmin.edit_song_lyrics)
+
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+    song = await song_service.get_one(song_id)
+
+    if song and song.lyrics:
+        text = (
+            "✏️ Текущий текст песни:\n"
+            f"{song.lyrics[:300] + '...' if len(song.lyrics) > 300 else song.lyrics}\n\n"
+            "Введите новый текст или отправьте 'удалить' для удаления:"
+        )
+    else:
+        text = "✏️ Введите текст песни:"
+
+    await callback.message.edit_text(  # type: ignore
+        text,
+        reply_markup=EditionCancelKeyboart()(),
+    )
+    await callback.answer()
+
+
+@router.message(FSMAdmin.edit_song_lyrics)
+async def process_edit_lyrics(message: Message, state: FSMContext, song_service: SongService):
+    input_text = str(message.text).strip()
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    if input_text.lower() == "удалить":
+        new_lyrics = ""
+    else:
+        new_lyrics = input_text
+
+    updated = await song_service.update(song_id=song_id, lyrics=new_lyrics)
+
+    if not updated:
+        await message.answer("❌ Ошибка при обновлении текста")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_media")
+async def edit_song_media(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(FSMAdmin.edit_song_media)
+
+    text = "✏️ Загрузите новое аудио/видео или отправьте 'удалить':\n\n" "▸ Форматы: MP3, MP4\n" "▸ Макс. размер: 50MB"
+
+    await callback.message.edit_text(  # type: ignore
+        text,
+        reply_markup=EditionCancelKeyboart()(),
+    )
+    await callback.answer()
+
+
+@router.message(FSMAdmin.edit_song_media, F.text)
+async def process_edit_media_text(message: Message, state: FSMContext, song_service: SongService):
+    input_text = str(message.text).strip().lower()
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    if input_text == "удалить":
+        updated = await song_service.update(song_id=song_id, file_id="", file_type_str="video")
+
+        if not updated:
+            await message.answer("❌ Ошибка при удалении медиафайла")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.message(FSMAdmin.edit_song_media, F.video)
+async def process_edit_media_video(message: Message, state: FSMContext, song_service: SongService):
+    video = cast(Video, message.video)
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    updated = await song_service.update(song_id=song_id, file_id=video.file_id, file_type_str="video")
+
+    if not updated:
+        await message.answer("❌ Ошибка при обновлении видео")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.message(FSMAdmin.edit_song_media, F.audio)
+async def process_edit_media_audio(message: Message, state: FSMContext, song_service: SongService):
+    audio = cast(Audio, message.audio)
+    data = await state.get_data()
+    song_id = int(data["song_id"])
+
+    updated = await song_service.update(song_id=song_id, file_id=audio.file_id, file_type_str="audio")
+
+    if not updated:
+        await message.answer("❌ Ошибка при обновлении аудио")
+
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(message, state, song_service)
+
+
+@router.callback_query(FSMAdmin.edit_song_select_field, F.data == "edit_exit")
+async def exit_editing(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    title = data.get("current_title", "песни")
+
+    await state.clear()
+    await callback.message.answer(  # type: ignore
+        f"✅ Редактирование «{title}» завершено",
+    )
+    await handle_admin_panel(callback.message, state)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "edit_cancel")
+async def cancel_editing(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    await state.set_state(FSMAdmin.edit_song_select_field)
+    await show_edit_menu(callback.message, state, song_service)  # type: ignore
+    await callback.answer("🚫 Редактирование отменено")
+    await callback.message.delete()  # type: ignore
 
 
 """User history handlers"""

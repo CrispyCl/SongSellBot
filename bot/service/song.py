@@ -168,6 +168,24 @@ class SongService:
             self.log.error("SongRepository: %s", e)
         return None
 
+    async def update_genres(self, song_id: int, genre_ids: List[int]) -> bool:
+        try:
+            song = await self.song_repo.get_one(song_id)
+            if not song:
+                return False
+
+            # Очищаем текущие жанры
+            for genre in song.genres:
+                await self.song_repo.remove_genre(song_id=song_id, genre_id=genre.id)
+
+            # Добавляем новые жанры
+            for genre_id in genre_ids:
+                await self.song_repo.add_genre(song_id=song_id, genre_id=genre_id)
+            return True
+        except Exception as e:
+            self.log.error(f"SongRepository: error updating genres: {e}")
+            return False
+
     async def delete(self, song_id: int) -> bool:
         try:
             await self.song_repo.delete(song_id)
