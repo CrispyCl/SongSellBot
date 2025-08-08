@@ -1,7 +1,9 @@
+from io import BytesIO
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from fsm import FSMUser
 from keyboards import ToMainMenu
@@ -319,8 +321,12 @@ async def send_current(
         f"<b>Тип:</b> {TypeRus[song.type.value].capitalize()}\n"
         f"<b>Темп:</b> {TempoRus[song.tempo.value].replace('_', ' ').capitalize()}\n"
         f"<b>Жанры:</b> " + ", ".join(f"<i>#{g.title}</i>" for g in song.genres) + "\n\n"
-        f"<b>Текст песни:</b>\n{song.lyrics or '🔇 Текст отсутствует'}"
     )
+
+    btns = [InlineKeyboardButton(text="❤️ Мне нравится", callback_data="nav:like")]
+    if song.lyrics:
+        btns.insert(0, InlineKeyboardButton(text="📄 Скачать текст", callback_data="download:lyrics"))
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -332,7 +338,7 @@ async def send_current(
                 InlineKeyboardButton(text="🎭 Другой жанр", callback_data="nav:genre"),
                 InlineKeyboardButton(text="🎵 Другой тип", callback_data="nav:type"),
             ],
-            [InlineKeyboardButton(text="❤️ Мне нравится", callback_data="nav:like")],
+            btns,
         ],
     )
 
@@ -340,6 +346,29 @@ async def send_current(
         await msg_obj.answer_video(song.file_id, caption=text, reply_markup=keyboard)
     else:
         await msg_obj.answer(text, reply_markup=keyboard)
+
+
+@router.callback_query(lambda c: c.data == "download:lyrics")
+async def handle_download_lyrics(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    index = data.get("index")
+    song_id = data["songs_list"][index]
+    song = await song_service.get_one(song_id)
+
+    if not song or not song.lyrics:
+        await callback.message.answer("🔇 Текст отсутствует")  # type: ignore
+        await callback.answer()
+        return
+
+    # Создание временного файла
+    file_content = song.lyrics
+    file_name = f"{song.title}.txt"
+
+    byte_stream = BytesIO(file_content.encode("utf-8"))
+    file = BufferedInputFile(byte_stream.read(), filename=file_name)
+
+    await callback.message.answer_document(document=file, caption=f"📄 Текст песни: <b>{song.title}</b>")  # type: ignore
+    await callback.answer()
 
 
 """Wishlist handlers"""
@@ -458,8 +487,11 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
         f"<b>Тип:</b> {TypeRus[song.type.value]}\n"
         f"<b>Темп:</b> {TempoRus[song.tempo.value].replace('_', ' ')}\n"
         f"<b>Жанры:</b> " + ", ".join(f"<i>#{g.title}</i>" for g in song.genres) + "\n\n"
-        f"<b>Текст песни:</b>\n{song.lyrics or '🔇 Текст отсутствует'}"
     )
+
+    btns = [InlineKeyboardButton(text="🗑 Удалить", callback_data="wish:remove")]
+    if song.lyrics:
+        btns.insert(0, InlineKeyboardButton(text="📄 Скачать текст", callback_data="download:lyrics"))
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -467,7 +499,7 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
                 InlineKeyboardButton(text="⬅️", callback_data="wish:prev"),
                 InlineKeyboardButton(text="➡️", callback_data="wish:next"),
             ],
-            [InlineKeyboardButton(text="🗑 Удалить", callback_data="wish:remove")],
+            btns,
             [InlineKeyboardButton(text="⬅️ В меню", callback_data="to_main")],
         ],
     )
