@@ -109,7 +109,12 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
     data = await state.get_data()
     selected: list[str] = data.get("genre_list", [])
 
-    all_genres = await genre_service.get_all()
+    genres = await genre_service.get_by_type_and_tempo(type_str=data["type_str"], tempo_str=tempo_str)
+    if not genres:
+        await callback.message.edit_text("😔 Жанров под данный темп и тип не найдено.")  # type: ignore
+        await cmd_catalog(callback.message, state)
+        return
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=(
             [
@@ -119,7 +124,7 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
                         callback_data=f"genre:{g.title}",
                     ),
                 ]
-                for g in all_genres
+                for g in genres
             ]
             + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
         ),
@@ -171,7 +176,12 @@ async def on_genre_toggle(callback: CallbackQuery, state: FSMContext, genre_serv
 
     await state.update_data(genre_list=selected)
 
-    all_genres = await genre_service.get_all()
+    genres = await genre_service.get_by_type_and_tempo(type_str=data["type_str"], tempo_str=data["tempo_str"])
+    if not genres:
+        await callback.message.edit_text("😔 Жанров под данный темп и тип не найдено.")  # type: ignore
+        await cmd_catalog(callback.message, state)
+        return
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=(
             [
@@ -181,7 +191,7 @@ async def on_genre_toggle(callback: CallbackQuery, state: FSMContext, genre_serv
                         callback_data=f"genre:{g.title}",
                     ),
                 ]
-                for g in all_genres
+                for g in genres
             ]
             + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
         ),
@@ -255,7 +265,12 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
         return
     selected: list[str] = data.get("genre_list", [])
 
-    all_genres = await genre_service.get_all()
+    genres = await genre_service.get_by_type_and_tempo(type_str=data["type_str"], tempo_str=data["tempo_str"])
+    if not genres:
+        await callback.message.edit_text("😔 Жанров под данный темп и тип не найдено.")  # type: ignore
+        await cmd_catalog(callback.message, state)
+        return
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=(
             [
@@ -265,7 +280,7 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
                         callback_data=f"genre:{g.title}",
                     ),
                 ]
-                for g in all_genres
+                for g in genres
             ]
             + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
         ),

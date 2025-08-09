@@ -219,6 +219,19 @@ class GenreRepository:
             result = await session.execute(select(Genre).order_by(Genre.id))
             return list(result.scalars().all())
 
+    async def get_by_type_and_tempo(self, song_type: SongType, tempo: SongTempo) -> List[Genre]:
+        async with self.db.get_session() as session:
+            session: AsyncSession
+            stmt = (
+                select(Genre)
+                .join(GenreToSong, Genre.id == GenreToSong.genre_id)
+                .join(Song, GenreToSong.song_id == Song.id)
+                .where(Song.type == song_type, Song.tempo == tempo)
+                .distinct()
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
 
 __all__ = [
     "SongRepository",

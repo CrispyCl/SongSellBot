@@ -249,6 +249,18 @@ class GenreService:
             self.log.error("GenreRepository: %s", e)
         return None
 
+    async def get_by_type_and_tempo(self, type_str: str, tempo_str: str) -> List[Genre]:
+        try:
+            song_type = SongType(type_str)
+            tempo = SongTempo(tempo_str)
+
+            return await self.repo.get_by_type_and_tempo(song_type, tempo)
+        except ValueError as e:
+            self.log.warning(f"Invalid enum value: {e}")
+        except Exception as e:
+            self.log.error(f"GenreRepository: error getting genres by type and tempo: {e}")
+        return []
+
 
 __all__ = [
     "SongService",
