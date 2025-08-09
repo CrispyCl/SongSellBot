@@ -16,6 +16,15 @@ class FSMAdmin(StatesGroup):
     confirm_data = State()
     # Song deletion
     enter_delete_title = State()
+    # Song edition
+    edit_song_enter_title = State()
+    edit_song_select_field = State()
+    edit_song_title = State()
+    edit_song_type = State()
+    edit_song_tempo = State()
+    edit_song_genres = State()
+    edit_song_lyrics = State()
+    edit_song_media = State()
     # User history
     enter_username = State()
 

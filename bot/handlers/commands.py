@@ -14,6 +14,7 @@ async def to_main_menu(callback: CallbackQuery, state: FSMContext, current_user:
     await state.clear()
     await process_start_command(callback.message, state, current_user=current_user)
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.message(CommandStart())
