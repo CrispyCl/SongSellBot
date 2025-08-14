@@ -658,7 +658,7 @@ async def admin_request_history(message: Message, state: FSMContext, user_servic
     await state.set_state(FSMAdmin.enter_username)
 
     users = await user_service.get()
-    users_text = "\n".join([f"👤 @{u.username} (ID: {u.id})" for u in users])
+    users_text = "\n".join([f"👤 @{u.username} (ID: {u.id})" for u in users if u.is_staff is False])
 
     await message.answer(
         f"📜 Введите ID пользователя или его username, чтобы получить историю просмотров:\n\n"
