@@ -106,9 +106,22 @@ async def on_all(
 
 
 @router.callback_query(FSMUser.music_list, F.data == "action:filter")
-async def on_filter(callback: CallbackQuery, state: FSMContext):
+async def on_filter(callback: CallbackQuery, state: FSMContext, song_service: SongService):
+    data = await state.get_data()
+    type_str = data.get("type_str")
+
+    if not type_str:
+        await callback.answer("Сначала выберите тип песни", show_alert=True)
+        return
+
     # Выбор темпа
-    buttons = [[InlineKeyboardButton(text=TempoRus[t.value], callback_data=f"tempo:{t.value}")] for t in SongTempo]
+    buttons = []
+    for t in SongTempo:
+        songs = await song_service.get_by_filter(type_str=type_str, tempo_str=t.value, genre_titles=None)
+        buttons.append(
+            [InlineKeyboardButton(text=f"{TempoRus[t.value]} ({len(songs)} шт.)", callback_data=f"tempo:{t.value}")],
+        )
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -127,20 +140,15 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
         await cmd_catalog(callback.message, state, song_service)
         return
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=(
-            [
-                [
-                    InlineKeyboardButton(
-                        text=("✅ " if g.title in selected else "") + g.title,
-                        callback_data=f"genre:{g.title}",
-                    ),
-                ]
-                for g in genres
-            ]
-            + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
-        ),
-    )
+    buttons = []
+    for g in genres:
+        songs = await song_service.get_by_filter(type_str=data["type_str"], tempo_str=tempo_str, genre_titles=[g.title])
+        text = ("✅ " if g.title in selected else "") + f"{g.title} ({len(songs)} шт.)"
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
+    if selected:
+        buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
 
@@ -199,20 +207,19 @@ async def on_genre_toggle(
         await cmd_catalog(callback.message, state, song_service)
         return
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=(
-            [
-                [
-                    InlineKeyboardButton(
-                        text=("✅ " if g.title in selected else "") + g.title,
-                        callback_data=f"genre:{g.title}",
-                    ),
-                ]
-                for g in genres
-            ]
-            + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
-        ),
-    )
+    buttons = []
+    for g in genres:
+        songs = await song_service.get_by_filter(
+            type_str=data["type_str"],
+            tempo_str=data["tempo_str"],
+            genre_titles=[g.title],
+        )
+        text = ("✅ " if g.title in selected else "") + f"{g.title} ({len(songs)} шт.)"
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
+    if selected:
+        buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     await callback.message.edit_reply_markup(reply_markup=keyboard)  # type: ignore
     await callback.answer(f"Выбрано: {len(selected)} из 3")
@@ -252,7 +259,7 @@ async def nav_next(
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:type")
 async def nav_type(callback: CallbackQuery, state: FSMContext, song_service: SongService):
-    await state.update_data(type_str=None, tempo_str=None, genre=None)
+    await state.update_data(type_str=None, tempo_str=None, genre=None, genre_list=[])
 
     song_count_by_type = []
     for song_type in SongType:
@@ -277,13 +284,22 @@ async def nav_type(callback: CallbackQuery, state: FSMContext, song_service: Son
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:tempo")
-async def nav_tempo(callback: CallbackQuery, state: FSMContext):
+async def nav_tempo(callback: CallbackQuery, state: FSMContext, song_service: SongService):
     data = await state.get_data()
-    if not data.get("type_str"):
+    type_str = data.get("type_str")
+    if not type_str:
         await callback.answer("Сначала выберите тип песни", show_alert=True)
         return
-    await state.update_data(tempo_str=None, genre=None)
-    buttons = [[InlineKeyboardButton(text=TempoRus[t.value], callback_data=f"tempo:{t.value}")] for t in SongTempo]
+
+    await state.update_data(tempo_str=None, genre=None, genre_list=[])
+
+    buttons = []
+    for t in SongTempo:
+        songs = await song_service.get_by_filter(type_str=type_str, tempo_str=t.value, genre_titles=None)
+        buttons.append(
+            [InlineKeyboardButton(text=f"{TempoRus[t.value]} ({len(songs)} шт.)", callback_data=f"tempo:{t.value}")],
+        )
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -304,20 +320,19 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
         await cmd_catalog(callback.message, state, song_service)
         return
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=(
-            [
-                [
-                    InlineKeyboardButton(
-                        text=("✅ " if g.title in selected else "") + g.title,
-                        callback_data=f"genre:{g.title}",
-                    ),
-                ]
-                for g in genres
-            ]
-            + ([[InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")]] if selected else [])
-        ),
-    )
+    buttons = []
+    for g in genres:
+        songs = await song_service.get_by_filter(
+            type_str=data["type_str"],
+            tempo_str=data["tempo_str"],
+            genre_titles=[g.title],
+        )
+        text = ("✅ " if g.title in selected else "") + f"{g.title} ({len(songs)} шт.)"
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
+    if selected:
+        buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
     await callback.message.delete()  # type: ignore
