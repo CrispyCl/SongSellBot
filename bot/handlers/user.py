@@ -78,6 +78,7 @@ async def on_type(callback: CallbackQuery, state: FSMContext):
         inline_keyboard=[
             [InlineKeyboardButton(text="▶️ Послушать все", callback_data="action:all")],
             [InlineKeyboardButton(text="🎚 Выбрать темп и жанр", callback_data="action:filter")],
+            [InlineKeyboardButton(text="↩️ Изменить тип", callback_data="nav:type")],
         ],
     )
     await callback.message.edit_text("Выберите действие:", reply_markup=keyboard)  # type: ignore
@@ -114,6 +115,7 @@ async def on_filter(callback: CallbackQuery, state: FSMContext, song_service: So
         await callback.answer("Сначала выберите тип песни", show_alert=True)
         return
 
+    await state.update_data(genre_list=[])
     # Выбор темпа
     buttons = []
     for t in SongTempo:
@@ -121,6 +123,7 @@ async def on_filter(callback: CallbackQuery, state: FSMContext, song_service: So
         buttons.append(
             [InlineKeyboardButton(text=f"{TempoRus[t.value]} ({len(songs)} шт.)", callback_data=f"tempo:{t.value}")],
         )
+    buttons.append([InlineKeyboardButton(text="↩️ Назад", callback_data=f"type:{type_str}")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
@@ -147,6 +150,7 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
         buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
     if selected:
         buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+    buttons.append([InlineKeyboardButton(text="↩️ Изменить темп", callback_data="action:filter")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
@@ -218,6 +222,7 @@ async def on_genre_toggle(
         buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
     if selected:
         buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+    buttons.append([InlineKeyboardButton(text="↩️ Изменить темп", callback_data="action:filter")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -266,17 +271,17 @@ async def nav_type(callback: CallbackQuery, state: FSMContext, song_service: Son
         songs = await song_service.get_by_filter(type_str=song_type.value, tempo_str=None, genre_titles=None)
         song_count_by_type.append((song_type, len(songs)))
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"{TypeRus[t.value]} ({count} шт.)",  # Добавляем количество песен
-                    callback_data=f"type:{t.value}",
-                ),
-            ]
-            for t, count in song_count_by_type
-        ],
-    )
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text=f"{TypeRus[t.value]} ({count} шт.)",  # Добавляем количество песен
+                callback_data=f"type:{t.value}",
+            ),
+        ]
+        for t, count in song_count_by_type
+    ]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     await callback.message.answer("🎶 Выберите тип песни:", reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -299,6 +304,7 @@ async def nav_tempo(callback: CallbackQuery, state: FSMContext, song_service: So
         buttons.append(
             [InlineKeyboardButton(text=f"{TempoRus[t.value]} ({len(songs)} шт.)", callback_data=f"tempo:{t.value}")],
         )
+    buttons.append([InlineKeyboardButton(text="↩️ Назад", callback_data=f"type:{type_str}")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
@@ -331,6 +337,7 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
         buttons.append([InlineKeyboardButton(text=text, callback_data=f"genre:{g.title}")])
     if selected:
         buttons.append([InlineKeyboardButton(text="✅ Готово", callback_data="genre:done")])
+    buttons.append([InlineKeyboardButton(text="↩️ Изменить темп", callback_data="action:filter")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.answer("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
