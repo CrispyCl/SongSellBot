@@ -115,7 +115,7 @@ async def on_filter(callback: CallbackQuery, state: FSMContext, song_service: So
         await callback.answer("Сначала выберите тип песни", show_alert=True)
         return
 
-    await state.update_data(genre_list=[])
+    await state.update_data(tempo_str=None, genre=None, genre_list=[])
     # Выбор темпа
     buttons = []
     for t in SongTempo:
