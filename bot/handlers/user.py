@@ -41,9 +41,7 @@ async def cmd_catalog(message: Message, state: FSMContext, song_service: SongSer
     await state.set_state(FSMUser.music_list)
 
     await message.answer(
-        "<b>🎵 Добро пожаловать в каталог песен!</b>\n\n"
-        "Здесь вы можете найти песни по вашему вкусу.\n"
-        "Сначала выберите тип песни, который вам интересен 👇",
+        "<b>🎵 Добро пожаловать в каталог песен!</b>\n\n" "Здесь вы можете найти песни по вашему вкусу.\n",
         reply_markup=ToMainMenu()(),
     )
 
@@ -64,7 +62,8 @@ async def cmd_catalog(message: Message, state: FSMContext, song_service: SongSer
         ],
     )
     await message.answer(
-        "🎶 <b>Выберите тип песни:</b>",
+        "Выбери для кого нужна песня.\n\n"
+        "Универсальные предназначены по тексту и для женского и для мужского исполнения ‼",
         reply_markup=keyboard,
     )
 
@@ -81,7 +80,18 @@ async def on_type(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="↩️ Изменить тип", callback_data="nav:type")],
         ],
     )
-    await callback.message.edit_text("Выберите действие:", reply_markup=keyboard)  # type: ignore
+    type_to_text = {
+        SongType.universal.value: "Универсальные песни",
+        SongType.male.value: "Мужские песни",
+        SongType.female.value: "Женские песни",
+        SongType.duet.value: "Дуэты",
+    }
+
+    text = (
+        f"Теперь можешь прослушать все {type_to_text[type_str]}"
+        " или сделать более детальную настройку перейдя к выбору темпа и жанра песни."
+    )
+    await callback.message.edit_text(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
 
 
@@ -126,7 +136,7 @@ async def on_filter(callback: CallbackQuery, state: FSMContext, song_service: So
     buttons.append([InlineKeyboardButton(text="↩️ Назад", callback_data=f"type:{type_str}")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await callback.message.edit_text("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
+    await callback.message.edit_text("Определись в каком темпе нужна песня", reply_markup=keyboard)  # type: ignore
     await callback.answer()
 
 
@@ -153,7 +163,12 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
     buttons.append([InlineKeyboardButton(text="↩️ Изменить темп", callback_data="action:filter")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await callback.message.edit_text("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
+
+    text = (
+        "Отлично остался последний шаг- выбери жанр песни и слушай подборку из демо треков. Те что тебе понравятся - "
+        "добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+    )
+    await callback.message.edit_text(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
 
 
@@ -283,7 +298,11 @@ async def nav_type(callback: CallbackQuery, state: FSMContext, song_service: Son
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    await callback.message.answer("🎶 Выберите тип песни:", reply_markup=keyboard)  # type: ignore
+    await callback.message.answer(  # type: ignore
+        "Выбери для кого нужна песня.\n\n"
+        "Универсальные предназначены по тексту и для женского и для мужского исполнения ‼",
+        reply_markup=keyboard,
+    )
     await callback.answer()
     await callback.message.delete()  # type: ignore
 
@@ -307,7 +326,7 @@ async def nav_tempo(callback: CallbackQuery, state: FSMContext, song_service: So
     buttons.append([InlineKeyboardButton(text="↩️ Назад", callback_data=f"type:{type_str}")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await callback.message.answer("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
+    await callback.message.answer("Определись в каком темпе нужна песня", reply_markup=keyboard)  # type: ignore
     await callback.answer()
     await callback.message.delete()  # type: ignore
 
@@ -340,7 +359,12 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
     buttons.append([InlineKeyboardButton(text="↩️ Изменить темп", callback_data="action:filter")])
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await callback.message.answer("🎭 Выберите жанр:", reply_markup=keyboard)  # type: ignore
+
+    text = (
+        "Отлично остался последний шаг- выбери жанр песни и слушай подборку из демо треков. Те что тебе понравятся - "
+        "добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+    )
+    await callback.message.answer(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
     await callback.message.delete()  # type: ignore
 
