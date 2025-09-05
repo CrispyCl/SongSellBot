@@ -61,11 +61,17 @@ async def cmd_catalog(message: Message, state: FSMContext, song_service: SongSer
             for t, count in song_count_by_type
         ],
     )
-    await message.answer(
-        "Выбери для кого нужна песня.\n\n"
-        "Универсальные предназначены по тексту и для женского и для мужского исполнения ‼",
-        reply_markup=keyboard,
+    text = (
+        "Каждая из этих композиций это готовая история, которая ищет своего исполнителя. Всё, что осталось вам сделать "
+        "это выбрать, кто её расскажет.\n\n"
+        "Выберите категорию:\n\n"
+        "· 👨‍🎤 Для мужского исполнения\n"
+        "· 👩‍🎤 Для женского исполнения\n"
+        "· 👥 Дуэтные композиции (для яркого вокального диалога)\n"
+        "· 🔄 Универсальные песни (подходят для любого вокалиста)\n\n"
+        "🎵 Ваша песня ждет вас"
     )
+    await message.answer(text, reply_markup=keyboard)
 
 
 @router.callback_query(FSMUser.music_list, F.data.startswith("type:"))
@@ -76,7 +82,7 @@ async def on_type(callback: CallbackQuery, state: FSMContext):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="▶️ Послушать все", callback_data="action:all")],
-            [InlineKeyboardButton(text="🎚 Выбрать темп и жанр", callback_data="action:filter")],
+            [InlineKeyboardButton(text="🎧 Выбрать темп и жанр", callback_data="action:filter")],
             [InlineKeyboardButton(text="↩️ Изменить тип", callback_data="nav:type")],
         ],
     )
@@ -165,8 +171,8 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     text = (
-        "Отлично остался последний шаг- выбери жанр песни и слушай подборку из демо треков. Те что тебе понравятся - "
-        "добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+        "Отлично остался последний шаг- выбери жанр песни и нажми ГОТОВО ✅  Слушай подборку из демо треков. "
+        "Те что тебе понравятся - добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
     )
     await callback.message.edit_text(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -255,10 +261,10 @@ async def nav_prev(
 ):
     data = await state.get_data()
     idx = (data["index"] - 1) % len(data["songs_list"])
-    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:next")
@@ -271,10 +277,10 @@ async def nav_next(
 ):
     data = await state.get_data()
     idx = (data["index"] + 1) % len(data["songs_list"])
-    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_current(callback.message, state, song_service, user_service, current_user)
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "nav:type")
@@ -361,8 +367,8 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
     text = (
-        "Отлично остался последний шаг- выбери жанр песни и слушай подборку из демо треков. Те что тебе понравятся - "
-        "добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+        "Отлично остался последний шаг- выбери жанр песни и нажми ГОТОВО ✅  Слушай подборку из демо треков. "
+        "Те что тебе понравятся - добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
     )
     await callback.message.answer(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -442,16 +448,17 @@ async def send_current(
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:prev"),
+                InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="nav:prev"),
                 InlineKeyboardButton(text="🎵 Следующая", callback_data="nav:next"),
             ],
             [
-                InlineKeyboardButton(text="🎚 Темп", callback_data="nav:tempo"),
+                InlineKeyboardButton(text="🎧 Темп", callback_data="nav:tempo"),
                 InlineKeyboardButton(text="🎭 Жанр", callback_data="nav:genre"),
-                InlineKeyboardButton(text="🎵 Тип", callback_data="nav:type"),
+                InlineKeyboardButton(text="🎤 Тип", callback_data="nav:type"),
             ],
             btns,
             [InlineKeyboardButton(text="💬 Хочу купить", url=support_url)],
+            [InlineKeyboardButton(text="🏠 На главную", callback_data="to_main")],
         ],
     )
 
@@ -518,7 +525,6 @@ async def cmd_wishlist(
 async def wish_prev(callback: CallbackQuery, state: FSMContext, song_service: SongService):
     data = await state.get_data()
     idx = (data["index"] - 1) % len(data["songs_list"])
-    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_wishlist_current(
         callback.message,
@@ -526,13 +532,13 @@ async def wish_prev(callback: CallbackQuery, state: FSMContext, song_service: So
         song_service=song_service,
     )
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "wish:next")
 async def wish_next(callback: CallbackQuery, state: FSMContext, song_service: SongService):
     data = await state.get_data()
     idx = (data["index"] + 1) % len(data["songs_list"])
-    await callback.message.delete()  # type: ignore
     await state.update_data(index=idx)
     await send_wishlist_current(
         callback.message,
@@ -540,6 +546,7 @@ async def wish_next(callback: CallbackQuery, state: FSMContext, song_service: So
         song_service=song_service,
     )
     await callback.answer()
+    await callback.message.delete()  # type: ignore
 
 
 @router.callback_query(FSMUser.music_list, F.data == "wish:remove")
@@ -627,12 +634,12 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⬅️", callback_data="wish:prev"),
-                InlineKeyboardButton(text="➡️", callback_data="wish:next"),
+                InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="wish:prev"),
+                InlineKeyboardButton(text="🎵 Следующая", callback_data="wish:next"),
             ],
             btns,
             [InlineKeyboardButton(text="💬 Хочу купить", url=support_url)],
-            [InlineKeyboardButton(text="⬅️ В меню", callback_data="to_main")],
+            [InlineKeyboardButton(text="🏠 На главную", callback_data="to_main")],
         ],
     )
 

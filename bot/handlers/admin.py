@@ -101,7 +101,7 @@ async def process_title(message: Message, state: FSMContext, song_service: SongS
     buttons = [[InlineKeyboardButton(text=TypeRus[t.value], callback_data=t.value)] for t in SongType]
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    await message.answer("🎚 Выберите тип песни:", reply_markup=keyboard)
+    await message.answer("🎤 Выберите тип песни:", reply_markup=keyboard)
 
 
 @router.callback_query(FSMAdmin.select_type)
@@ -113,7 +113,7 @@ async def process_type(callback: CallbackQuery, state: FSMContext):
     buttons = [[InlineKeyboardButton(text=TempoRus[t.value], callback_data=t.value)] for t in SongTempo]
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    await callback.message.edit_text("🎛 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
+    await callback.message.edit_text("🎧 Выберите темп песни:", reply_markup=keyboard)  # type: ignore
 
 
 @router.callback_query(FSMAdmin.select_tempo)
@@ -216,8 +216,8 @@ async def handle_confirmation(message: Message, state: FSMContext):
     confirmation_text = (
         "📋 Проверьте данные:\n\n"
         f"🎶 Название: {data['title']}\n"
-        f"🎚 Тип: {TypeRus[data['type_str']].capitalize()}\n"
-        f"🎛 Темп: {TempoRus[data['tempo_str']].capitalize()}\n"
+        f"🎤 Тип: {TypeRus[data['type_str']].capitalize()}\n"
+        f"🎧 Темп: {TempoRus[data['tempo_str']].capitalize()}\n"
         f"🎭 Жанры: {', '.join(s.capitalize() for s in data['genre_ids'])}\n"
         f"📝 Текст: {'указан' if data['lyrics'] else 'не указан'}\n"
         f"🎵 Медиа: {'добавлено' if data.get('file_id') else 'отсутствует'}"
@@ -336,8 +336,8 @@ async def show_edit_menu(message: Message, state: FSMContext, song_service: Song
     text = (
         "✏️ <b>Редактирование песни:</b>\n"
         f"🎶 Название: {song.title}\n"
-        f"🎚 Тип: {TypeRus[song.type.value]}\n"
-        f"🎛 Темп: {TempoRus[song.tempo.value]}\n"
+        f"🎤 Тип: {TypeRus[song.type.value]}\n"
+        f"🎧 Темп: {TempoRus[song.tempo.value]}\n"
         f"🎭 Жанры: {', '.join(genres) if genres else 'не указаны'}\n"
         f"📝 Текст: {'указан' if song.lyrics else 'не указан'}\n"
         f"🎵 Медиа: {'добавлено' if song.file_id else 'отсутствует'}\n\n"
