@@ -443,13 +443,13 @@ async def send_current(
 
     btns = [InlineKeyboardButton(text="🛒 В корзину", callback_data="nav:like")]
     if song.lyrics:
-        btns.insert(0, InlineKeyboardButton(text="📄 Скачать текст", callback_data="download:lyrics"))
+        btns.insert(0, InlineKeyboardButton(text="📄 Читать текст", callback_data="download:lyrics"))
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="nav:prev"),
-                InlineKeyboardButton(text="🎵 Следующая", callback_data="nav:next"),
+                InlineKeyboardButton(text="➡️ Следующая", callback_data="nav:next"),
             ],
             [
                 InlineKeyboardButton(text="🎧 Темп", callback_data="nav:tempo"),
@@ -629,13 +629,13 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
 
     btns = [InlineKeyboardButton(text="🗑 Удалить", callback_data="wish:remove")]
     if song.lyrics:
-        btns.insert(0, InlineKeyboardButton(text="📄 Скачать текст", callback_data="download:lyrics"))
+        btns.insert(0, InlineKeyboardButton(text="📄 Читать текст", callback_data="download:lyrics"))
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="wish:prev"),
-                InlineKeyboardButton(text="🎵 Следующая", callback_data="wish:next"),
+                InlineKeyboardButton(text="➡️ Следующая", callback_data="wish:next"),
             ],
             btns,
             [InlineKeyboardButton(text="💬 Хочу купить", url=support_url)],
