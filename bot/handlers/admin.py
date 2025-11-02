@@ -30,10 +30,12 @@ TypeRus = {
     SongType.male.value: "Мужская",
     SongType.female.value: "Женская",
     SongType.duet.value: "Дуэт",
+    SongType.children.value: "Детская",
     "Универсальная": SongType.universal.value,
     "Мужская": SongType.male.value,
     "Женская": SongType.female.value,
     "Дуэт": SongType.duet.value,
+    "Детская": SongType.children.value,
 }
 
 TempoRus = {

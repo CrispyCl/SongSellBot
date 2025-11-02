@@ -18,10 +18,12 @@ TypeRus = {
     SongType.male.value: "Мужская",
     SongType.female.value: "Женская",
     SongType.duet.value: "Дуэт",
+    SongType.children.value: "Детская",
     "Универсальная": SongType.universal.value,
     "Мужская": SongType.male.value,
     "Женская": SongType.female.value,
     "Дуэт": SongType.duet.value,
+    "Детская": SongType.children.value,
 }
 
 TempoRus = {
@@ -68,7 +70,8 @@ async def cmd_catalog(message: Message, state: FSMContext, song_service: SongSer
         "· 👨‍🎤 Для мужского исполнения\n"
         "· 👩‍🎤 Для женского исполнения\n"
         "· 👥 Дуэтные композиции (для яркого вокального диалога)\n"
-        "· 🔄 Универсальные песни (подходят для любого вокалиста)\n\n"
+        "· 🔄 Универсальные песни (подходят для любого вокалиста)\n"
+        "· 👶 Детские композиции\n\n"
         "🎵 Ваша песня ждет вас"
     )
     await message.answer(text, reply_markup=keyboard)
@@ -91,6 +94,7 @@ async def on_type(callback: CallbackQuery, state: FSMContext):
         SongType.male.value: "Мужские песни",
         SongType.female.value: "Женские песни",
         SongType.duet.value: "Дуэты",
+        SongType.children.value: "Детские песни",
     }
 
     text = (

@@ -17,6 +17,7 @@ class SongType(PyEnum):
     male = "male"
     female = "female"
     duet = "duet"
+    children = "children"
 
 
 class SongTempo(PyEnum):
