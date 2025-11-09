@@ -8,7 +8,7 @@ async def setup_menu(bot: Bot):
             BotCommand(command="start", description="Перезапустить бота"),
             BotCommand(command="help", description="Информация о боте"),
             BotCommand(command="catalog", description="Каталог песен"),
-            BotCommand(command="wishlist", description="Посмотреть корзину"),
+            BotCommand(command="wishlist", description="Список желаемого"),
         ],
     )
 

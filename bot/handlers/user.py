@@ -1,7 +1,7 @@
 from io import BytesIO
 import urllib.parse
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -38,16 +38,17 @@ TempoRus = {
 
 @router.message(F.text == "🎵 Каталог песен")
 @router.message(Command("catalog"))
-async def cmd_catalog(message: Message, state: FSMContext, song_service: SongService):
+async def cmd_catalog(message: Message, state: FSMContext, song_service: SongService, bot: Bot):
     await state.clear()
     await state.set_state(FSMUser.music_list)
 
     await message.answer(
-        "<b>🎵 Добро пожаловать в каталог песен!</b>\n\n" "Здесь вы можете найти песни по вашему вкусу.\n",
+        "<b>🎵Добро пожаловать в каталог песен!</b>\n\n<i>Желаю, чтобы среди моих песен вы нашли ту единственную, "
+        "что станет отражением вашей души и вашим главным хитом! ✨</i>",
         reply_markup=ToMainMenu()(),
     )
 
-    song_count_by_type = []
+    song_count_by_type: list[tuple[SongType, int]] = []
     for song_type in SongType:
         songs = await song_service.get_by_filter(type_str=song_type.value, tempo_str=None, genre_titles=None)
         song_count_by_type.append((song_type, len(songs)))
@@ -64,17 +65,19 @@ async def cmd_catalog(message: Message, state: FSMContext, song_service: SongSer
         ],
     )
     text = (
-        "Каждая из этих композиций это готовая история, которая ищет своего исполнителя. Всё, что осталось вам сделать "
-        "это выбрать, кто её расскажет.\n\n"
-        "Выберите категорию:\n\n"
-        "· 👨‍🎤 Для мужского исполнения\n"
-        "· 👩‍🎤 Для женского исполнения\n"
-        "· 👥 Дуэтные композиции (для яркого вокального диалога)\n"
-        "· 🔄 Универсальные песни (подходят для любого вокалиста)\n"
-        "· 👶 Детские композиции\n\n"
-        "🎵 Ваша песня ждет вас"
+        "Каждая из этих композиций это готовая история, которая ждёт своего исполнителя. Вам осталось лишь выбрать, "
+        "кто её расскажет.\n\n"
+        "<b>Выберите категорию:</b>\n\n"
+        "· 👨‍🎤 <b>Для мужского исполнения</b>\n"
+        "· 👩‍🎤 <b>Для женского исполнения</b>\n"
+        "· 👥 <b>Дуэтные композиции</b> - для яркого вокального диалога\n"
+        "· 🔄 <b>Универсальные песни</b> - подходят для любого вокалиста\n"
+        "· 👶 <b>Детские композиции</b>\n\n"
+        "Найдите свою идеальную песню - ту, что станет саундтреком вашего успеха! Пусть в ней бьётся сердце нашего "
+        "совместного творчества и зазвучит ваш уникальный голос. 🎵\n\n"
+        "🎵 <b>Ваша песня ждёт вас! Сделайте свой выбор и дайте ей прозвучать!</b>"
     )
-    await message.answer(text, reply_markup=keyboard)
+    await bot.send_message(message.chat.id, text, reply_markup=keyboard)
 
 
 @router.callback_query(FSMUser.music_list, F.data.startswith("type:"))
@@ -90,18 +93,49 @@ async def on_type(callback: CallbackQuery, state: FSMContext):
         ],
     )
     type_to_text = {
-        SongType.universal.value: "Универсальные песни",
-        SongType.male.value: "Мужские песни",
-        SongType.female.value: "Женские песни",
-        SongType.duet.value: "Дуэты",
-        SongType.children.value: "Детские песни",
+        SongType.universal.value: (
+            "Теперь вы можете:\n\n"
+            "🎵 <b>Прослушать все универсальные песни</b>\n"
+            "- Чтобы сразу познакомиться со всей коллекцией\n\n"
+            "⚙ Или настроить поиск точнее\n"
+            "- Перейти к выбору темпа и жанра песни, чтобы найти идеальное сочетание\n\n"
+            "<b>Выбирайте способ, который вам удобен и пусть ваша идеальная песня найдётся быстрее! 🚀</b>"
+        ),
+        SongType.male.value: (
+            "Теперь вы можете:\n\n"
+            "🎵 <b>Прослушать все мужские песни</b>\n"
+            "- Чтобы сразу познакомиться с полной коллекцией\n\n"
+            "⚙ Или настроить поиск точнее\n"
+            "- Перейти к выбору темпа и жанра для идеального результата\n\n"
+            "<b>Выбирайте подходящий вариант и пусть поиск будет быстрым, а результат - идельным! 🎶</b>"
+        ),
+        SongType.female.value: (
+            "Теперь вы можете:\n\n"
+            "🎵 <b>Прослушать все женские песни</b>\n"
+            "- Чтобы сразу познакомиться с полной коллекцией\n\n"
+            "⚙ Или настроить поиск точнее\n"
+            "- Перейти к выбору темпа и жанра для идеального результата\n\n"
+            "<b>Выбирайте удобный способ и пусть ваша идеальная песня найдётся легко и быстро! ✨</b>"
+        ),
+        SongType.duet.value: (
+            "Теперь вы можете:\n\n"
+            "🎵 <b>Прослушать все дуэты</b>\n"
+            "- Чтобы сразу познакомиться с полной коллекцией\n\n"
+            "⚙ Или настроить поиск точнее\n"
+            "- Перейти к выбору темпа и жанра для идеального результата\n\n"
+            "<b>Выбирайте удобный способ и найдите ту самую композицию, которая раскроет всю мощь дуэта!🎤✨</b>"
+        ),
+        SongType.children.value: (
+            "Теперь вы можете:\n\n"
+            "🎵 <b>Прослушать все детские песни</b>\n"
+            "- Чтобы окунуться в мир добрых мелодий и искренних историй\n\n"
+            "⚙ Или настроить поиск бережнее\n"
+            "- Подобрать идеальный темп и жанр для юного исполнителя\n\n"
+            "<b>Выбирайте с душой и помогите детскому таланту найти своё первое большое звучание!🌟</b>"
+        ),
     }
 
-    text = (
-        f"Теперь можешь прослушать все {type_to_text[type_str]}"
-        " или сделать более детальную настройку перейдя к выбору темпа и жанра песни."
-    )
-    await callback.message.edit_text(text, reply_markup=keyboard)  # type: ignore
+    await callback.message.edit_text(type_to_text[type_str], reply_markup=keyboard)  # type: ignore
     await callback.answer()
 
 
@@ -176,7 +210,7 @@ async def on_tempo(callback: CallbackQuery, state: FSMContext, genre_service: Ge
 
     text = (
         "Отлично остался последний шаг- выбери жанр песни и нажми ГОТОВО ✅  Слушай подборку из демо треков. "
-        "Те что тебе понравятся - добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+        "Те что тебе понравятся - добавляй в список желаемого, что бы не потерять или сразу жми «Хочу эту песню»"
     )
     await callback.message.edit_text(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -372,7 +406,7 @@ async def nav_genre(callback: CallbackQuery, state: FSMContext, genre_service: G
 
     text = (
         "Отлично остался последний шаг- выбери жанр песни и нажми ГОТОВО ✅  Слушай подборку из демо треков. "
-        "Те что тебе понравятся - добавляй в корзину, что бы не потерять или сразу жми «Хочу купить»"
+        "Те что тебе понравятся - добавляй в список желаемого, что бы не потерять или сразу жми «Хочу эту песню»"
     )
     await callback.message.answer(text, reply_markup=keyboard)  # type: ignore
     await callback.answer()
@@ -400,7 +434,7 @@ async def nav_like(
         song.title,
         "like",
     )
-    await callback.answer("🛒 Добавлено в корзину")
+    await callback.answer("🛒 Добавлено в список желаемого")
 
 
 async def send_current(
@@ -443,25 +477,25 @@ async def send_current(
     # Кодируем текст для URL
 
     encoded_text = urllib.parse.quote(support_text)
-    support_url = f"https://t.me/euphoria_official_agent?text={encoded_text}"
+    support_url = f"https://t.me/MusicCompanyIraEuphoria?text={encoded_text}"
 
-    btns = [InlineKeyboardButton(text="🛒 В корзину", callback_data="nav:like")]
+    btns = [InlineKeyboardButton(text="🛒 В список желаемого", callback_data="nav:like")]
     if song.lyrics:
         btns.insert(0, InlineKeyboardButton(text="📄 Читать текст", callback_data="download:lyrics"))
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="nav:prev"),
-                InlineKeyboardButton(text="➡️ Следующая", callback_data="nav:next"),
+                InlineKeyboardButton(text="⬅️ Предыдущая", callback_data="nav:prev"),
+                InlineKeyboardButton(text="➡️ Следующая", callback_data="nav:next"),
             ],
             [
                 InlineKeyboardButton(text="🎧 Темп", callback_data="nav:tempo"),
-                InlineKeyboardButton(text="🎭 Жанр", callback_data="nav:genre"),
-                InlineKeyboardButton(text="🎤 Тип", callback_data="nav:type"),
+                InlineKeyboardButton(text="🎭 Жанр", callback_data="nav:genre"),
+                InlineKeyboardButton(text="🎤 Тип", callback_data="nav:type"),
             ],
             btns,
-            [InlineKeyboardButton(text="💬 Хочу купить", url=support_url)],
+            [InlineKeyboardButton(text="💬 Хочу эту песню!", url=support_url)],
             [InlineKeyboardButton(text="🏠 На главную", callback_data="to_main")],
         ],
     )
@@ -498,7 +532,7 @@ async def handle_download_lyrics(callback: CallbackQuery, state: FSMContext, son
 """Wishlist handlers"""
 
 
-@router.message(F.text == "🛒 Корзина")
+@router.message(F.text == "🛒 Желаемые песни")
 @router.message(Command("wishlist"))
 async def cmd_wishlist(
     message: Message,
@@ -512,9 +546,9 @@ async def cmd_wishlist(
 
     songs = await user_service.get_wishlist(current_user.id)
     if not songs:
-        return await message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())
+        return await message.answer("🧺 Ваш список желаемого пуст.", reply_markup=ToMainMenu()())
 
-    await message.answer("🧺 Ваша корзина:", reply_markup=ToMainMenu()())
+    await message.answer("🧺 Ваш список желаемого:", reply_markup=ToMainMenu()())
     ids = list(dict.fromkeys(s.id for s in songs))
     await state.update_data(songs_list=ids, index=0, in_wishlist=True)
     return await send_wishlist_current(
@@ -581,7 +615,7 @@ async def wish_remove(
     songs_list.pop(idx)
     if not songs_list:
         await state.clear()
-        await callback.message.answer("🧺 Ваша корзина пуста.", reply_markup=ToMainMenu()())  # type: ignore
+        await callback.message.answer("🧺 Ваш список желаемого пуст.", reply_markup=ToMainMenu()())  # type: ignore
         await callback.answer()
         await callback.message.delete()  # type: ignore
         return
@@ -593,7 +627,7 @@ async def wish_remove(
         state,
         song_service=song_service,
     )
-    await callback.answer("🗑 Удалено из корзины")
+    await callback.answer("🗑 Удалено из списка желаемого")
     await callback.message.delete()  # type: ignore
 
 
@@ -608,7 +642,7 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
 
     current_pos = idx + 1
     total_songs = len(data["songs_list"])
-    position_info = f"🛒 {current_pos} из {total_songs} в корзине\n\n"
+    position_info = f"🛒 {current_pos} из {total_songs} в желаемом\n\n"
 
     text = (
         f"🎵 <b>{song.title}</b>\n\n"
@@ -629,7 +663,7 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
     # Кодируем текст для URL
 
     encoded_text = urllib.parse.quote(support_text)
-    support_url = f"https://t.me/euphoria_official_agent?text={encoded_text}"
+    support_url = f"https://t.me/MusicCompanyIraEuphoria?text={encoded_text}"
 
     btns = [InlineKeyboardButton(text="🗑 Удалить", callback_data="wish:remove")]
     if song.lyrics:
@@ -642,7 +676,7 @@ async def send_wishlist_current(msg_obj, state: FSMContext, song_service: SongSe
                 InlineKeyboardButton(text="➡️ Следующая", callback_data="wish:next"),
             ],
             btns,
-            [InlineKeyboardButton(text="💬 Хочу купить", url=support_url)],
+            [InlineKeyboardButton(text="💬 Хочу эту песню!", url=support_url)],
             [InlineKeyboardButton(text="🏠 На главную", callback_data="to_main")],
         ],
     )
