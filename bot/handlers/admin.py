@@ -719,9 +719,9 @@ async def show_history_page(msg: Message | CallbackQuery, state: FSMContext, use
 
     if cart_items:
         cart_text = "\n".join([f"🛒 {item.title}" for item in cart_items])
-        text += f"\n\n<b>Корзина:</b>\n{cart_text}"
+        text += f"\n\n<b>Ваш список желаемого:</b>\n{cart_text}"
     else:
-        text += "\n\n<b>Корзина пуста.</b>"
+        text += "\n\n<b>Ваш список желаемого пуст.</b>"
 
     # Кнопки навигации
     nav_row = []

@@ -4,7 +4,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 class MainUserKeyboard:
     def __call__(self, is_admin: bool) -> ReplyKeyboardMarkup:
         buttons: list[list[KeyboardButton]] = [
-            [KeyboardButton(text="🎵 Каталог песен"), KeyboardButton(text="🛒 Корзина")],
+            [KeyboardButton(text="🎵 Каталог песен"), KeyboardButton(text="🛒 Желаемые песни")],
         ]
         if is_admin:
             buttons.append([KeyboardButton(text="🔐 Панель администратора")])
