@@ -11,5 +11,4 @@ flake8-import-order
 flake8-print
 flake8-quotes
 flake8-return
-flake8-use-pathlib
 pep8-naming
